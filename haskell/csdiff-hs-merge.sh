@@ -2,33 +2,44 @@
 #
 # csdiff-hs-merge.sh
 #
-# Uso:
-#   csdiff-hs-merge.sh BASE_FILE LEFT_FILE RIGHT_FILE > MERGED_FILE
+# Uso: 
+#   ./csdiff-hs-merge.sh [--simple] BASE_FILE LEFT_FILE RIGHT_FILE
 #
-# Implementa:
-#   1) Pré-processamento com separadores Haskell (::, ->, =>, <-, @)
-#   2) Merge via diff3 -m
-#   3) Pós-processamento (remoção de marcadores e "rejunte" das linhas)
-#
-# Requisitos:
-#   - bash
-#   - diff3
-#   - awk, sed, tr, mktemp
-#
-# Observação:
-#   - Lida com arquivos com final de linha CRLF (Windows) ou LF (Unix).
-#   - Usa um marcador único pouco provável de aparecer em código.
+# Opções:
+#   --simple   Usa apenas o conjunto básico de separadores (:: -> => <- @).
+#              (O padrão é usar o conjunto completo, incluindo = | , ( ) )
 #
 
 set -euo pipefail
 
 MARKER=">>>>CSDIFF_MARK<<<<<"
+MODE="FULL"  # Padrão: conjunto completo de separadores
 
+# --- Parsing de Argumentos ---
 usage() {
-    echo "Uso: $0 BASE_FILE LEFT_FILE RIGHT_FILE" >&2
+    echo "Uso: $0 [--simple] BASE_FILE LEFT_FILE RIGHT_FILE" >&2
+    echo "  --simple: Usa menos delimitadores (apenas :: -> => <- @)" >&2
     exit 1
 }
 
+# Processa flags antes dos arquivos
+while [[ "$#" -gt 0 ]]; do
+    case "$1" in
+        --simple|--menos)
+            MODE="SIMPLE"
+            shift
+            ;;
+        -*)
+            echo "Opção desconhecida: $1" >&2
+            usage
+            ;;
+        *)
+            break # Parar ao encontrar o primeiro argumento que não é flag (arquivo)
+            ;;
+    esac
+done
+
+# Verifica se restaram exatamente 3 argumentos (os arquivos)
 if [ "$#" -ne 3 ]; then
     usage
 fi
@@ -57,103 +68,63 @@ cleanup() {
 trap cleanup EXIT
 
 ############################################
-# Função: normalizar EOL e aplicar marcadores
+# Função: Pré-processamento
+# (Adaptada para ler a variável 'mode')
 ############################################
 preprocess_file() {
     in_file=$1
     out_file=$2
 
-    # 1) Normaliza CRLF -> LF removendo todos os '\r'
-    #    (tr é POSIX e funciona bem nesse contexto)
-    # 2) Insere marcadores e quebra de linha ao redor dos separadores Haskell:
-    #       ::  ->  =>  <-  @
-    #
-    # Regra: SEPARADOR  =>  \nMARKER\nSEPARADOR\nMARKER\n
-    #
-    # A ordem dos padrões é importante para evitar conflitos de substring.
-    # Usamos 'g' para pegar todas as ocorrências na linha.
     tr -d '\r' < "$in_file" | \
-    sed -e "s/::/\n$MARKER\n::\n$MARKER\n/g" \
-        -e "s/->/\n$MARKER\n->\n$MARKER\n/g" \
-        -e "s/=>/\n$MARKER\n=>\n$MARKER\n/g" \
-        -e "s/<-/\n$MARKER\n<-\n$MARKER\n/g" \
-        -e "s/@/\n$MARKER\n@\n$MARKER\n/g" \
-    > "$out_file"
+    awk -v mk="$MARKER" -v mode="$MODE" '
+    {
+        line = $0
+        comment_idx = index(line, "--")
+        
+        if (comment_idx > 0) {
+            code_part = substr(line, 1, comment_idx - 1)
+            comment_part = substr(line, comment_idx)
+        } else {
+            code_part = line
+            comment_part = ""
+        }
+
+        repl = "\n" mk "\n&\n" mk "\n"
+        
+        # --- Separadores Básicos (Sempre ativos) ---
+        gsub(/::/, repl, code_part)
+        gsub(/->/, repl, code_part)
+        gsub(/=>/, repl, code_part)
+        gsub(/<-/, repl, code_part)
+        gsub(/@/,  repl, code_part)
+        
+        # --- Separadores Estendidos (Apenas no modo FULL) ---
+        if (mode == "FULL") {
+            gsub(/=/,  repl, code_part)
+            gsub(/,/,  repl, code_part)
+            gsub(/[|]/, repl, code_part)
+            gsub(/\(/,  repl, code_part)
+            gsub(/\)/,  repl, code_part)
+        }
+
+        print code_part comment_part
+    }
+    ' > "$out_file"
 }
 
 ############################################
-# Função: remover marcadores e rejuntar linhas
+# Função: Pós-processamento
+# (Adaptada para ler a variável 'mode')
 ############################################
 postprocess_file() {
     in_file=$1
 
-    # Estratégia:
-    #   1) Garante normalização de '\r' novamente (caso diff3 tenha gerado algo estranho).
-    #   2) "Cola" de volta as linhas que foram separadas pelos marcadores.
-    #
-    # Na etapa de pré-processamento, criamos trechos do tipo:
-    #   ... texto anterior ...
-    #   MARKER
-    #   ::
-    #   MARKER
-    #   ... texto seguinte ...
-    #
-    # O que queremos ao final é:
-    #   ...texto anterior...::...texto seguinte...
-    #
-    # Abordagem:
-    #   - Usar awk em modo "acumulador de linhas".
-    #   - Sempre que encontra uma linha com o MARKER:
-    #       * ignora completamente essa linha (o marcador em si some).
-    #   - Caso contrário, concatena a linha atual a um buffer,
-    #     adicionando um '\n' normal entre linhas que não eram separadores.
-    #
-    # Como os separadores (::, ->, =>, <-, @) foram transformados em linhas próprias
-    # entre marcadores, basta remover as linhas MARKER e concatenar todo o resto
-    # em um fluxo de texto com quebras de linha normais preservadas.
-    #
-    # Mas para preservar as quebras de linha originais, a estratégia é:
-    #   - Quando uma linha é gerada apenas por causa da lógica de separadores,
-    #     ela está sempre cercada por marcadores.
-    #   - Ao remover marcadores, linhas de separadores ficam em sequência direta
-    #     com as linhas antes/depois na mesma "região" do merge.
-    #
-    # Implementação concreta:
-    #   - Remove '\r'.
-    #   - Percorre com awk, usando um registrador de estado simples para
-    #     definir quando "rejuntar".
-    #
-    # Mais simples e robusto:
-    #   - Remove completamente as linhas com MARKER.
-    #   - Depois, junta linhas que consistam apenas em um dos separadores
-    #     (::, ->, =>, <-, @) com a linha anterior (e eventualmente com a seguinte).
-    #
-    # Isso evita depender da posição exata do marcador e funciona bem
-    # mesmo na presença de conflitos do diff3.
-
     tr -d '\r' < "$in_file" | \
     awk -v MARKER="$MARKER" '
-        # Primeiro passo: descarta linhas que sejam exatamente o marcador
         MARKER == $0 { next }
-
-        {
-            print
-        }
+        { print }
     ' | \
-    awk '
-        # Segundo passo: rejuntar separadores (linhas que são apenas ::, ->, =>, <- ou @)
-        #
-        # Estratégia:
-        #   - Mantemos uma linha anterior em buffer.
-        #   - Quando a linha atual é um separador puro:
-        #       * salvamos o separador e marcamos que a próxima linha deve ser colada.
-        #   - Quando a linha anterior era um texto normal e
-        #     a linha atual é um separador, não imprimimos ainda.
-        #   - Quando encontramos uma linha não vazia depois de um separador,
-        #     colamos: prev_line + separador + current_line.
-        #
-        #   - Quebras de linha reais (linhas vazias ou começo de novo bloco) são preservadas.
-
+    awk -v mode="$MODE" '
         function flush_prev() {
             if (has_prev) {
                 print prev_line
@@ -168,18 +139,24 @@ postprocess_file() {
             sep = ""
         }
 
-        # Detecta se a linha é apenas um dos separadores
+        # Verifica se a linha é um separador válido com base no modo
         function is_separator_line(s) {
-            return (s == "::" || s == "->" || s == "=>" || s == "<-" || s == "@")
+            # Básicos
+            if (s == "::" || s == "->" || s == "=>" || s == "<-" || s == "@") return 1
+            
+            # Estendidos (apenas se FULL)
+            if (mode == "FULL") {
+                if (s == "=" || s == "|" || s == "," || s == "(" || s == ")") return 1
+            }
+            
+            return 0
         }
 
         {
             line = $0
 
-            # Se não temos nada pendente ainda
             if (!has_prev && !sep_pending) {
                 if (is_separator_line(line)) {
-                    # Separador no início absoluto do arquivo: apenas guarda
                     sep = line
                     sep_pending = 1
                 } else {
@@ -189,14 +166,11 @@ postprocess_file() {
                 next
             }
 
-            # Se há um separador pendente aguardando a próxima linha
             if (sep_pending) {
                 if (!has_prev) {
-                    # Não havia linha anterior, então a linha final é apenas sep + line
                     prev_line = sep line
                     has_prev = 1
                 } else {
-                    # Cola em cima da linha anterior
                     prev_line = prev_line sep line
                 }
                 sep = ""
@@ -204,23 +178,18 @@ postprocess_file() {
                 next
             }
 
-            # Aqui temos uma linha anterior em prev_line
             if (is_separator_line(line)) {
-                # Guarde o separador e espere a próxima linha para colar
                 sep = line
                 sep_pending = 1
                 next
             }
 
-            # Caso comum: nem separador, nem nada pendente
             flush_prev()
             prev_line = line
             has_prev = 1
         }
 
         END {
-            # Se ainda houver um separador pendente sem nada depois,
-            # agregue-o à última linha ou imprima sozinho.
             if (sep_pending) {
                 if (has_prev) {
                     prev_line = prev_line sep
@@ -235,28 +204,14 @@ postprocess_file() {
 }
 
 ############################################
-# 1) Pré-processamento
+# Execução Principal
 ############################################
 preprocess_file "$BASE_FILE" "$tmp_base"
 preprocess_file "$LEFT_FILE" "$tmp_left"
 preprocess_file "$RIGHT_FILE" "$tmp_right"
 
-############################################
-# 2) Merge com diff3 -m
-############################################
-# diff3 espera a ordem: L R B ou L B R dependendo do uso.
-# Para simular merge estilo Git (base, local, remota) usando diff3 clássico,
-# usa-se normalmente:
-#   diff3 -m LEFT BASE RIGHT
-#
-# A saída é enviada para tmp_merged.
 diff3 -m "$tmp_left" "$tmp_base" "$tmp_right" > "$tmp_merged" || {
-    # diff3 -m retorna código de erro em caso de conflitos, mas ainda produz saída.
-    # Não tratamos como erro fatal: apenas seguimos com o pós-processamento.
     :
 }
 
-############################################
-# 3) Pós-processamento
-############################################
 postprocess_file "$tmp_merged"
