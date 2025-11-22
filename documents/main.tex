@@ -1,0 +1,96 @@
+\documentclass[12pt]{article}
+\usepackage{ArtigoIFPE} % Certifique-se que este pacote está na pasta
+\addbibresource{referencias.bib}
+
+% --- INFORMAÇÕES DO TRABALHO ---
+\title{ADAPTAÇÃO E AVALIAÇÃO DE MERGE TEXTUAL BASEADO EM SEPARADORES SINTÁTICOS PARA A LINGUAGEM HASKELL}
+\titleEng{ADAPTATION AND EVALUATION OF TEXTUAL MERGE BASED ON SYNTACTIC SEPARATORS FOR HASKELL LANGUAGE}
+
+\autora{Seu Nome Aqui}
+\emaila{seu.email@discente.ifpe.edu.br}
+\orientador{Nome do Orientador}
+\emailOrientador{email.orientador@ifpe.edu.br}
+
+\campus{Belo Jardim}
+\curso{de Bacharelado em Engenharia de Software} 
+\data{Novembro de 2025}
+
+\begin{document}
+
+\maketitle
+\thispagestyle{plain}
+
+% --- RESUMO (Placeholder - Escrever por último) ---
+\section*{Resumo}
+\noindent O desenvolvimento colaborativo de software depende de ferramentas de controle de versão para integrar modificações paralelas. As ferramentas tradicionais de merge não estruturado (baseadas em linhas) frequentemente reportam falsos conflitos, impactando a produtividade. Abordagens baseadas em Árvores Sintáticas Abstratas (AST) reduzem esses conflitos, mas possuem alto custo de implementação por linguagem. Recentemente, foi proposto o CSDiff, uma abordagem textual baseada em separadores sintáticos, avaliada originalmente em Java. Este trabalho propõe a adaptação e avaliação desta técnica para Haskell, uma linguagem funcional com características sintáticas distintas, como a regra de layout e operadores customizados. O objetivo é verificar se a eficácia observada em linguagens imperativas se mantém no paradigma funcional. 
+
+\palavraschave{Merge de Software. Haskell. Conflitos de Merge. Separadores Sintáticos.}
+
+\vspace*{20pt} \hrule height 1.5pt
+
+% --- CORPO DO TCC ---
+
+\section{Introdução}
+\label{sec:introducao}
+
+O desenvolvimento de software moderno é inerentemente colaborativo, exigindo que múltiplos desenvolvedores trabalhem simultaneamente nos mesmos artefatos de código. Para gerenciar essas modificações paralelas, Sistemas de Controle de Versão (VCS), como o Git, utilizam ferramentas de \textit{merge} para integrar as alterações. A técnica predominante na indústria é o \textit{merge} não estruturado (textual), que compara arquivos linha a linha (e.g., algoritmo \textit{diff3}).
+
+Embora amplamente utilizadas, as ferramentas baseadas em linhas apresentam limitações significativas. Elas frequentemente reportam conflitos falsos (falsos positivos) quando modificações ocorrem na mesma linha ou em linhas adjacentes, mesmo que tais mudanças não interfiram semanticamente entre si \parencite{cavalcanti2019impact}. Isso é particularmente crítico em linguagens que encorajam construções concisas ou onde a formatação sintática é densa.
+
+Para mitigar esse problema, pesquisadores propuseram ferramentas de \textit{merge} estruturado e semiestruturado, que utilizam a estrutura sintática (AST) do programa para realizar a integração \parencite{apel2011semistructured}. No entanto, essas ferramentas exigem a construção de analisadores (\textit{parsers}) complexos para cada linguagem, dificultando sua adoção generalizada.
+
+Recentemente, \textcite{clementino2021textual} propuseram uma abordagem híbrida denominada \textit{Custom Separators Diff} (CSDiff). Esta técnica mantém a simplicidade do processamento textual, mas utiliza separadores sintáticos específicos da linguagem (como ponto e vírgula ou chaves em Java) para segmentar o código antes da comparação, simulando o comportamento de ferramentas estruturadas com menor custo computacional.
+
+\subsection{Problema de Pesquisa}
+Enquanto o CSDiff demonstrou resultados promissores para a linguagem Java, sua eficácia em linguagens com paradigmas e sintaxes radicalmente diferentes, como **Haskell**, ainda não foi explorada. Haskell é uma linguagem puramente funcional que utiliza indentação significativa (\textit{layout rule}) e faz uso extensivo de operadores customizados e assinaturas de tipos complexas em linhas únicas. 
+
+Essas características representam um desafio para o \textit{merge} tradicional, pois pequenas alterações em definições de tipos ou em \textit{pattern matching} podem ser interpretadas erroneamente como conflitos físicos. Portanto, este trabalho investiga se a abordagem baseada em separadores pode ser adaptada com sucesso para Haskell.
+
+As seguintes Questões de Pesquisa (QPs), adaptadas do estudo original de \textcite{clementino2021textual}, norteiam este trabalho:
+
+\begin{itemize}
+    \item \textbf{QP1:} A adaptação do CSDiff para Haskell reduz a quantidade total de conflitos reportados em comparação ao \textit{merge} padrão (Diff3)?
+    \item \textbf{QP2:} A ferramenta adaptada reduz a quantidade de cenários de \textit{merge} com conflitos?
+    \item \textbf{QP3:} A ferramenta adaptada reduz a quantidade de falsos conflitos (falsos positivos) em comparação ao Diff3?
+    \item \textbf{QP4:} A ferramenta adaptada introduz integrações incorretas (falsos negativos) em comparação ao Diff3?
+\end{itemize}
+
+\subsection{Objetivos}
+\subsubsection{Objetivo Geral}
+Adaptar a técnica de \textit{merge} textual baseado em separadores sintáticos para a linguagem Haskell e avaliar sua eficácia em comparação ao algoritmo tradicional \textit{diff3}.
+
+\subsubsection{Objetivos Específicos}
+\begin{itemize}
+    \item Identificar os separadores sintáticos da linguagem Haskell mais relevantes para a resolução de conflitos (e.g., \texttt{::}, \texttt{->}, \texttt{=>}, \texttt{=}, \texttt{|});
+    \item Implementar um protótipo da ferramenta CSDiff adaptado para suportar a sintaxe e as peculiaridades do Haskell (como comentários e indentação);
+    \item Coletar um conjunto de cenários de \textit{merge} reais a partir de repositórios de software livre em Haskell;
+    \item Executar um experimento comparativo entre o CSDiff adaptado e o \textit{diff3}, analisando as métricas de conflitos, falsos positivos e falsos negativos.
+\end{itemize}
+
+\section{Fundamentação Teórica}
+\label{sec:fundamentacao}
+% Roteiro sugerido:
+% 2.1 Controle de Versão e Merge (Conceitos básicos, Diff3)
+% 2.2 Estratégias de Merge (Textual vs Estruturado vs Semiestruturado)
+% 2.3 A Abordagem CSDiff (Explicar como funciona a ferramenta original do artigo)
+% 2.4 A Linguagem Haskell (Focar na sintaxe: layout rule, operadores, pattern matching - explicar por que isso é difícil pro Diff3)
+
+\section{Metodologia}
+\label{sec:metodologia}
+% Roteiro sugerido:
+% 3.1 Definição dos Separadores (Explicar a escolha de ::, ->, =>, etc.)
+% 3.2 Implementação da Ferramenta (Descrever o script Bash/AWK que criamos, o pré-processamento e pós-processamento)
+% 3.3 Seleção da Amostra (Como você vai pegar projetos Haskell do GitHub)
+% 3.4 Procedimento de Avaliação (Como vai rodar o script e comparar com o diff3)
+
+\section{Resultados Preliminares (ou Esperados)}
+\label{sec:resultados}
+% Aqui você colocará os dados dos testes que fizemos no terminal e futuramente a análise dos repositórios reais.
+
+\section{Conclusão}
+\label{sec:conclusao}
+
+% --- BIBLIOGRAFIA ---
+\printbibliography[title={REFERÊNCIAS}]
+
+\end{document}
