@@ -1,0 +1,14 @@
+Repo: cabal
+Arquivo: cabal-install/Distribution/Client/CmdClean.hs
+
+Commit Merge (Manual): 6f19128
+Link: https://github.com/haskell/cabal/commit/6f19128
+
+Commit Base (Ancestral): e5618f9
+Link: https://github.com/haskell/cabal/commit/e5618f9179012f01d80f10ca4a1ab540ec670cfa
+
+Commit Left (Local): 3dbcb15
+Link: https://github.com/haskell/cabal/commit/3dbcb15a15986aacd2d39e5f31d18c2437cf7558
+
+Commit Right (Remoto): 1259836
+Link: https://github.com/haskell/cabal/commit/1259836afd35dd939892f1b0d10c95780d62eeef

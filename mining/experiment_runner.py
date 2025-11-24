@@ -12,34 +12,36 @@ RESULTS_FILE = "resultados_experimento.csv"
 
 # Lista de repositórios Haskell para testar (adicione mais aqui)
 REPOS_TO_MINE = [
-    "https://github.com/koalaman/shellcheck.git"
-    #"https://github.com/haskell/cabal.git"
+    "https://github.com/koalaman/shellcheck.git",
+    "https://github.com/haskell/cabal.git"
 ]
 
 def setup():
     if not os.path.exists(REPOS_DIR):
         os.makedirs(REPOS_DIR)
     
-    # Cabeçalho do CSV
+    # Adicionamos colunas de comparação com o HUMANO (Manual)
     with open(RESULTS_FILE, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
-        writer.writerow(["Repo", "MergeCommit", "File", "Diff3_Conflict", "CSDiff_Conflict", "CSDiff_Differs_From_Diff3"])
-
-def run_csdiff(base, left, right, output):
-    try:
-        subprocess.run([CSDIFF_SCRIPT, base, left, right], stdout=open(output, 'w'), check=True)
-        return True
-    except subprocess.CalledProcessError:
-        return False
+        writer.writerow([
+            "Repo", "MergeCommit", "File", 
+            "Diff3_Conflict", "CSDiff_Conflict", 
+            "CSDiff_Equals_Diff3", "CSDiff_Equals_Manual"
+        ])
 
 def count_conflicts(filepath):
-    """Conta quantos marcadores de conflito '<<<<<<<' existem no arquivo."""
     try:
         with open(filepath, 'r', errors='ignore') as f:
-            content = f.read()
-            return content.count("<<<<<<<")
+            return f.read().count("<<<<<<<")
     except:
         return 0
+
+def files_are_equal(file1, file2):
+    try:
+        with open(file1, "rb") as f1, open(file2, "rb") as f2:
+            return f1.read() == f2.read()
+    except:
+        return False
 
 def process_repo(repo_url):
     repo_name = repo_url.split("/")[-1].replace(".git", "")
@@ -52,68 +54,75 @@ def process_repo(repo_url):
     
     repo = Repo(repo_path)
     
-    # Itera sobre commits de merge (com 2 pais)
+    # Itera sobre commits de merge
     merges = [c for c in repo.iter_commits() if len(c.parents) == 2]
     print(f"Encontrados {len(merges)} merges.")
 
-    for commit in merges[:1000]: # Limitado a 50 merges para teste
-        parent1 = commit.parents[0] # Left (geralmente)
-        parent2 = commit.parents[1] # Right (geralmente)
+    count = 0
+    for commit in merges:
+        if count >= 3000: break # Limite para não demorar dias
+        
+        parent1 = commit.parents[0] # Left
+        parent2 = commit.parents[1] # Right
         base = repo.merge_base(parent1, parent2)[0]
         
-        # Arquivos modificados
         diffs = parent1.diff(parent2)
         
         for diff in diffs:
             filename = diff.a_path
             if not filename.endswith(".hs"):
                 continue
-                
+            
             try:
-                # Extrai as 3 versões do arquivo
+                # Extrai as 4 versões: Base, Left, Right e FINAL (Manual)
                 base_content = base.tree[filename].data_stream.read()
                 left_content = parent1.tree[filename].data_stream.read()
                 right_content = parent2.tree[filename].data_stream.read()
+                manual_content = commit.tree[filename].data_stream.read() # O Gabarito
                 
-                # Salva temporariamente
                 with open("temp_base.hs", "wb") as f: f.write(base_content)
                 with open("temp_left.hs", "wb") as f: f.write(left_content)
                 with open("temp_right.hs", "wb") as f: f.write(right_content)
+                with open("temp_manual.hs", "wb") as f: f.write(manual_content)
                 
-                # 1. Roda Diff3 Padrão
+                # 1. Diff3
                 subprocess.run(["diff3", "-m", "temp_left.hs", "temp_base.hs", "temp_right.hs"], 
                                stdout=open("out_diff3.hs", "w"), stderr=subprocess.DEVNULL)
                 
-                # 2. Roda CSDiff (Seu Script)
-                # Nota: Usamos --simple ou não dependendo do que você quer testar.
-                # Aqui estou chamando sem flag (modo FULL)
+                # 2. CSDiff (Tente rodar uma vez normal e outra com --simple editando aqui)
                 subprocess.run([CSDIFF_SCRIPT, "temp_base.hs", "temp_left.hs", "temp_right.hs"], 
                                stdout=open("out_csdiff.hs", "w"), stderr=subprocess.DEVNULL)
                 
                 # Coleta Métricas
-                conflicts_diff3 = count_conflicts("out_diff3.hs")
-                conflicts_csdiff = count_conflicts("out_csdiff.hs")
+                c_diff3 = count_conflicts("out_diff3.hs")
+                c_csdiff = count_conflicts("out_csdiff.hs")
                 
-                # Verifica se os arquivos finais são diferentes
-                is_different = False
-                with open("out_diff3.hs", "rb") as f1, open("out_csdiff.hs", "rb") as f2:
-                    if f1.read() != f2.read():
-                        is_different = True
+                # Comparações
+                eq_diff3 = files_are_equal("out_csdiff.hs", "out_diff3.hs")
+                eq_manual = files_are_equal("out_csdiff.hs", "temp_manual.hs")
 
-                # Salva no CSV se houver conflito em algum deles
-                if conflicts_diff3 > 0 or conflicts_csdiff > 0:
+                # Só salva se houver conflito no Diff3 (são os casos interessantes)
+                if c_diff3 > 0:
                     with open(RESULTS_FILE, 'a', newline='') as csvfile:
                         writer = csv.writer(csvfile)
-                        writer.writerow([repo_name, commit.hexsha[:7], filename, conflicts_diff3, conflicts_csdiff, is_different])
-                        
-                    print(f"  [DADOS] {filename}: Diff3={conflicts_diff3}, CSDiff={conflicts_csdiff}")
-
-            except Exception as e:
-                # Ignora erros de arquivo não encontrado ou binário
+                        writer.writerow([
+                            repo_name, commit.hexsha[:7], filename, 
+                            c_diff3, c_csdiff, 
+                            eq_diff3, eq_manual
+                        ])
+                    
+                    # Log rápido se achamos algo legal
+                    if c_csdiff < c_diff3:
+                        print(f"  [REDUÇÃO] {filename}: {c_diff3} -> {c_csdiff}")
+                    if c_csdiff == 0 and not eq_manual:
+                        print(f"  [ALERTA FN] {filename}: Integrou sem conflito mas difere do manual")
+            
+            except Exception:
                 continue
+        count += 1
 
 if __name__ == "__main__":
     setup()
     for url in REPOS_TO_MINE:
         process_repo(url)
-    print("\nExperimento Finalizado! Verifique 'resultados_experimento.csv'")
+    print("\nFim! Verifique 'resultados_experimento.csv'")

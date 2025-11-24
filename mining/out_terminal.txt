@@ -1,0 +1,35 @@
+python3 experiment_runner.py
+--- Processando shellcheck ---
+Encontrados 351 merges.
+  [REDUÇÃO] src/ShellCheck/AnalyzerLib.hs: 2 -> 1
+  [REDUÇÃO] ShellCheck/Analytics.hs: 2 -> 1
+--- Processando cabal ---
+Encontrados 2880 merges.
+  [REDUÇÃO] Cabal-syntax/src/Distribution/Compat/Prelude.hs: 1 -> 0
+  [ALERTA FN] Cabal-syntax/src/Distribution/Compat/Prelude.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] Cabal/src/Distribution/Backpack/Configure.hs: 10 -> 8
+  [REDUÇÃO] Cabal/src/Distribution/Simple/GHC.hs: 6 -> 4
+  [REDUÇÃO] Cabal/src/Distribution/Simple/Setup/Repl.hs: 2 -> 0
+  [ALERTA FN] Cabal/src/Distribution/Simple/Setup/Repl.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] Cabal/src/Distribution/Types/AnnotatedId.hs: 3 -> 2
+  [REDUÇÃO] cabal-install/src/Distribution/Client/Config.hs: 10 -> 9
+  [REDUÇÃO] cabal-install/src/Distribution/Client/ProjectBuilding.hs: 10 -> 8
+  [REDUÇÃO] cabal-install/src/Distribution/Client/ProjectConfig/Legacy.hs: 11 -> 8
+  [REDUÇÃO] cabal-install/src/Distribution/Client/ProjectOrchestration.hs: 2 -> 0
+  [ALERTA FN] cabal-install/src/Distribution/Client/ProjectOrchestration.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] Cabal/Distribution/Simple/GHCJS.hs: 2 -> 1
+  [REDUÇÃO] cabal-install/Distribution/Client/CmdBuild.hs: 3 -> 2
+  [REDUÇÃO] cabal-install/Distribution/Client/CmdClean.hs: 1 -> 0
+  [ALERTA FN] cabal-install/Distribution/Client/CmdClean.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] cabal-install/Distribution/Client/DistDirLayout.hs: 1 -> 0
+  [REDUÇÃO] cabal-install/Distribution/Client/Dependency/Modular/Solver.hs: 1 -> 0
+  [ALERTA FN] cabal-install/Distribution/Client/Dependency/Modular/Solver.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] cabal-install/Setup.hs: 1 -> 0
+  [ALERTA FN] cabal-install/Setup.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] Cabal/Distribution/Simple/GHC.hs: 7 -> 5
+  [REDUÇÃO] cabal-install/Distribution/Client/Install.hs: 1 -> 0
+  [ALERTA FN] cabal-install/Distribution/Client/Install.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] Cabal/Distribution/ParseUtils.hs: 2 -> 1
+  [REDUÇÃO] Cabal/tests/PackageTests/PackageTester.hs: 1 -> 0
+
+Fim! Verifique 'resultados_experimento.csv'

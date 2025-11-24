@@ -1,0 +1,63 @@
+# --- Virtual environment ---
+venv/
+.env/
+.venv/
+
+# --- Byte-compiled / optimized / DLL files ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Distribuição / pacotes ---
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# --- Logs e arquivos temporários ---
+*.log
+*.pot
+*.pyc
+*.pyo
+*.tmp
+*.temp
+
+# --- Cache ---
+.cache/
+.pytest_cache/
+.mypy_cache/
+coverage.xml
+htmlcov/
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+
+# --- Ferramentas ---
+.tox/
+.nox/
+pytest.ini
+
+# --- Config local ---
+.env.local
+config.local.json
+
+# --- IDEs ---
+# VSCode
+.vscode/
+
+# PyCharm
+.idea/
+*.iml
+
+# --- SO ---
+# macOS
+.DS_Store
+
+# Windows
+Thumbs.db
+
+#latex
+documents/main.synctex.gz
+documents/main.log
+documents/main.fdb_latexmk
+documents/main.aux
