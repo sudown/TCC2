@@ -10,13 +10,14 @@ OUTPUT_DIR = "./casos_estudo"
 
 # Seus casos encontrados
 CASOS_INTERESSANTES = [
-    ("cabal", "6f19128", "cabal-install/Distribution/Client/CmdClean.hs")
+    ("stack", "802afc1", "src/Stack/Build/ConstructPlan.hs")
 ]
 
 # URLs dos repositórios para clone automático
 REPO_URLS = {
     "cabal": "https://github.com/haskell/cabal",
-    "shellcheck": "https://github.com/koalaman/shellcheck"
+    "shellcheck": "https://github.com/koalaman/shellcheck",
+    "stack": "https://github.com/commercialhaskell/stack"
 }
 
 def ensure_repo_cloned(repo_name):

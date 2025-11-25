@@ -1,0 +1,65 @@
+--- Processando stack ---
+Encontrados 2755 merges.
+  [REDUÇÃO] src/Stack/Build/ConstructPlan.hs: 1 -> 0
+  [ALERTA FN] src/Stack/Build/ConstructPlan.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] src/Stack/Build/ExecutePackage.hs: 1 -> 0
+  [ALERTA FN] src/Stack/Build/ExecutePackage.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] src/Stack/Build/ExecutePackage.hs: 1 -> 0
+  [ALERTA FN] src/Stack/Build/ExecutePackage.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] src/Stack/Build/ExecutePackage.hs: 1 -> 0
+  [ALERTA FN] src/Stack/Build/ExecutePackage.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] src/Path/Extra.hs: 1 -> 0
+  [ALERTA FN] src/Path/Extra.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] src/main/Main.hs: 8 -> 7
+  [REDUÇÃO] src/Stack/Init.hs: 9 -> 8
+  [REDUÇÃO] src/main/Main.hs: 2 -> 1
+  [REDUÇÃO] subs/curator/app/Main.hs: 1 -> 0
+  [REDUÇÃO] src/main/Main.hs: 1 -> 0
+  [ALERTA FN] src/main/Main.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] src/main/Main.hs: 1 -> 0
+  [ALERTA FN] src/main/Main.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] src/Stack/Build/ConstructPlan.hs: 4 -> 0
+  [ALERTA FN] src/Stack/Build/ConstructPlan.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] subs/pantry/src/Pantry/Types.hs: 1 -> 0
+  [ALERTA FN] subs/pantry/src/Pantry/Types.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] subs/pantry/src/Pantry/Archive.hs: 10 -> 4
+  [REDUÇÃO] src/main/Main.hs: 2 -> 1
+  [REDUÇÃO] src/Stack/Runners.hs: 5 -> 2
+  [REDUÇÃO] src/Stack/Types/BuildPlan.hs: 2 -> 1
+  [REDUÇÃO] src/main/Main.hs: 1 -> 0
+  [ALERTA FN] src/main/Main.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] src/test/Stack/ConfigSpec.hs: 1 -> 0
+  [REDUÇÃO] src/test/Stack/NixSpec.hs: 1 -> 0
+  [REDUÇÃO] src/Stack/Build/ConstructPlan.hs: 8 -> 7
+  [REDUÇÃO] src/test/Stack/ConfigSpec.hs: 1 -> 0
+  [ALERTA FN] src/test/Stack/ConfigSpec.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] src/test/Stack/NixSpec.hs: 1 -> 0
+  [REDUÇÃO] subs/pantry/src/Pantry.hs: 1 -> 0
+  [ALERTA FN] subs/pantry/src/Pantry.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] src/Stack/Upload.hs: 2 -> 1
+  [REDUÇÃO] src/Stack/Types/NamedComponent.hs: 1 -> 0
+  [ALERTA FN] src/Stack/Types/NamedComponent.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] src/System/Process/PagerEditor.hs: 1 -> 0
+  [ALERTA FN] src/System/Process/PagerEditor.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] src/Stack/Build.hs: 1 -> 0
+  [ALERTA FN] src/Stack/Build.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] src/Stack/Package.hs: 2 -> 0
+  [ALERTA FN] src/Stack/Package.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] src/Stack/Docker.hs: 4 -> 3
+  [REDUÇÃO] src/Stack/Nix.hs: 1 -> 0
+  [ALERTA FN] src/Stack/Nix.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] src/Stack/Build/ConstructPlan.hs: 2 -> 1
+  [REDUÇÃO] src/Stack/Types/Config.hs: 1 -> 0
+  [ALERTA FN] src/Stack/Types/Config.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] src/Stack/Init.hs: 1 -> 0
+  [ALERTA FN] src/Stack/Init.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] src/Stack/Types/Config.hs: 2 -> 0
+  [ALERTA FN] src/Stack/Types/Config.hs: Integrou sem conflito mas difere do manual
+  [REDUÇÃO] src/Stack/Options.hs: 2 -> 1
+Traceback (most recent call last):
+  File "/home/miros/TCC2/mining/experiment_runner.py", line 126, in <module>
+    process_repo(url)
+  File "/home/miros/TCC2/mining/experiment_runner.py", line 66, in process_repo
+    base = repo.merge_base(parent1, parent2)[0]
+           ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~^^^
+IndexError: list index out of range

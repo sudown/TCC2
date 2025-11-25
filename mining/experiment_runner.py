@@ -12,8 +12,7 @@ RESULTS_FILE = "resultados_experimento.csv"
 
 # Lista de repositórios Haskell para testar (adicione mais aqui)
 REPOS_TO_MINE = [
-    "https://github.com/koalaman/shellcheck.git",
-    "https://github.com/haskell/cabal.git"
+    "https://github.com/commercialhaskell/stack"
 ]
 
 def setup():
