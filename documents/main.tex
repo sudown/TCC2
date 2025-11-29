@@ -72,7 +72,7 @@ Curso de Bacharelado em Engenharia de Software
 
 % RESUMO
 \begin{resumo}
-O desenvolvimento de software moderno depende de sistemas de controle de versão para integrar modificações paralelas. As ferramentas tradicionais de \textit{merge} não estruturado, como o \textit{diff3}, operam linha a linha e frequentemente reportam falsos conflitos quando alterações ocorrem em linhas adjacentes. Abordagens estruturadas resolvem esse problema utilizando a sintaxe da linguagem, mas possuem alto custo de implementação. Recentemente, a técnica CSDiff (\textit{Custom Separators Diff}) foi proposta como uma alternativa híbrida, utilizando separadores sintáticos para segmentar o código antes da comparação. Este trabalho propõe a ferramenta \textbf{Haskell-SepMerge}, uma adaptação da técnica CSDiff para a linguagem Haskell, cujas características de sintaxe posicional e operadores funcionais desafiam os algoritmos tradicionais. Através de um estudo empírico com repositórios reais, como \textit{ShellCheck} e \textit{Cabal}, demonstrou-se que o Haskell-SepMerge é capaz de reduzir falsos positivos em cenários de inserção adjacente e, em casos específicos, produzir integrações semanticamente superiores às manuais, embora aumente a granularidade visual dos conflitos remanescentes.
+O desenvolvimento de software moderno depende de sistemas de controle de versão para integrar modificações paralelas. As ferramentas tradicionais de \textit{merge} não estruturado, como o \textit{diff3}, operam linha a linha e frequentemente reportam falsos conflitos quando alterações ocorrem em linhas adjacentes. Abordagens estruturadas resolvem esse problema utilizando a sintaxe da linguagem, mas possuem alto custo de implementação. Recentemente, a técnica CSDiff (\textit{Custom Separators Diff}) foi proposta como uma alternativa híbrida, utilizando separadores sintáticos para segmentar o código antes da comparação. Este trabalho propõe a ferramenta \textbf{Haskell-SepMerge}, uma adaptação da técnica CSDiff para a linguagem Haskell, cujas características de sintaxe posicional e operadores funcionais desafiam os algoritmos tradicionais. Através de um estudo empírico com repositórios reais, como \textit{ShellCheck}, \textit{Cabal} e \textit{Stack}, demonstrou-se que o Haskell-SepMerge é capaz de reduzir falsos positivos em cenários de inserção adjacente e, em casos específicos, produzir integrações semanticamente superiores às manuais, embora aumente significativamente a granularidade visual dos conflitos.
 
 \textbf{Palavras-chave}: Engenharia de Software. Merge de Código. Haskell. Haskell-SepMerge.
 \end{resumo}
@@ -80,7 +80,7 @@ O desenvolvimento de software moderno depende de sistemas de controle de versão
 % ABSTRACT
 \begin{resumo}[Abstract]
 \begin{otherlanguage*}{english}
-Modern software development relies on version control systems to integrate parallel modifications. Traditional unstructured merge tools, such as \textit{diff3}, operate line-by-line and often report false conflicts when changes occur in adjacent lines. Structured approaches address this using language syntax but incur high implementation costs. Recently, the CSDiff (Custom Separators Diff) technique was proposed as a hybrid alternative, using syntactic separators to segment code before comparison. This work proposes \textbf{Haskell-SepMerge}, an adaptation of the CSDiff technique for the Haskell language, whose positional syntax and functional operators challenge traditional algorithms. Through an empirical study with real repositories, such as \textit{ShellCheck} and \textit{Cabal}, it was demonstrated that Haskell-SepMerge can reduce false positives in adjacent insertion scenarios and, in specific cases, produce semantically superior integrations compared to manual merges, although it increases the visual granularity of conflicts.
+Modern software development relies on version control systems to integrate parallel modifications. Traditional unstructured merge tools, such as \textit{diff3}, operate line-by-line and often report false conflicts when changes occur in adjacent lines. Structured approaches address this using language syntax but incur high implementation costs. Recently, the CSDiff (Custom Separators Diff) technique was proposed as a hybrid alternative, using syntactic separators to segment code before comparison. This work proposes \textbf{Haskell-SepMerge}, an adaptation of the CSDiff technique for the Haskell language, whose positional syntax and functional operators challenge traditional algorithms. Through an empirical study with real repositories, such as \textit{ShellCheck}, \textit{Cabal}, and \textit{Stack}, it was demonstrated that Haskell-SepMerge can reduce false positives in adjacent insertion scenarios and, in specific cases, produce semantically superior integrations compared to manual merges, although it significantly increases the visual granularity of conflicts.
 
 \textbf{Keywords}: Software Engineering. Code Merge. Haskell. Haskell-SepMerge.
 \end{otherlanguage*}
@@ -131,7 +131,7 @@ O objetivo geral deste trabalho é desenvolver e avaliar a ferramenta **Haskell-
 \begin{enumerate}
     \item Identificar e implementar o conjunto de separadores sintáticos relevantes para Haskell (e.g., \texttt{::}, \texttt{->}, \texttt{=});
     \item Desenvolver um protótipo robusto da ferramenta capaz de lidar com peculiaridades de ambiente (como finais de linha CRLF/LF);
-    \item Realizar um estudo empírico minerando repositórios reais de Haskell (como \textit{ShellCheck} e \textit{Cabal}) para coletar dados que respondam às QPs;
+    \item Realizar um estudo empírico minerando repositórios reais de Haskell (como \textit{ShellCheck}, \textit{Stack} e \textit{Cabal}) para coletar dados que respondam às QPs;
     \item Analisar qualitativamente os cenários de conflito para identificar casos de redução de falsos positivos e potenciais falsos negativos.
 \end{enumerate}
 
@@ -206,63 +206,61 @@ O Haskell-SepMerge foi implementado utilizando \textit{Bash} e \textit{AWK}. Dif
     \item \textbf{Separadores Estruturais:} \texttt{=} (atribuição), \texttt{|} (guards), \texttt{,} (listas) e parênteses.
 \end{itemize}
 
-Foi implementada uma máquina de estados no pós-processamento para garantir a reconstrução correta do código, lidando com problemas de final de linha (CRLF vs LF) comuns em ambientes Windows/WSL. Adicionalmente, implementou-se um filtro para ignorar separadores dentro de comentários de linha (\texttt{--}).
+Foi implementada uma máquina de estados no pós-processamento para garantir a reconstrução correta do código, lidando com problemas de final de linha (CRLF vs LF) comuns em ambientes Windows/WSL. Adicionalmente, implementou-se um filtro para ignorar separadores dentro de comentários de linha (\texttt{--}) e uma lógica de proteção de tokens para evitar que separadores compostos (como \texttt{=>}) fossem fragmentados incorretamente por separadores simples (como \texttt{=}).
 
 \section{Infraestrutura de Avaliação}
 Para validar o Haskell-SepMerge, desenvolveu-se um script em Python (\texttt{experiment\_runner.py}) inspirado na infraestrutura \textit{MiningFramework} \cite{clementino2021textual}. O script executa:
 \begin{enumerate}
-    \item Clona repositórios Haskell (e.g., \textit{ShellCheck}, \textit{Cabal});
+    \item Clona repositórios Haskell (e.g., \textit{ShellCheck}, \textit{Stack}, \textit{Cabal});
     \item Itera sobre \textit{commits} de merge, reconstruindo as versões Base, Left e Right;
+    \item Filtra merges triviais (onde não houve mudança real nos arquivos);
     \item Executa paralelamente o \textit{diff3} e o \textit{Haskell-SepMerge};
-    \item Compara os resultados com o \textit{merge} manual (gabarito) para identificar Falsos Positivos e Negativos.
+    \item Compara os resultados com o \textit{merge} manual (gabarito) utilizando uma comparação ``minificada'' (ignorando espaços em branco) para focar na equivalência semântica e evitar falsos negativos cosméticos.
 \end{enumerate}
 
 % CAPÍTULO 4
 \chapter{Resultados e Discussão}
 \label{chap:resultados}
 
-O experimento foi conduzido minerando os repositórios \textit{ShellCheck} e \textit{Cabal}, totalizando a análise de mais de 3.200 cenários de \textit{merge}. Os dados coletados foram consolidados para responder às questões de pesquisa (QPs) definidas na introdução.
+O experimento foi conduzido minerando os repositórios \textit{ShellCheck}, \textit{Cabal} e \textit{Stack}, totalizando a análise de 758 cenários de \textit{merge} conflitantes. Os dados coletados foram consolidados para responder às questões de pesquisa (QPs) definidas na introdução.
 
 \section{QP1: A ferramenta reduz a quantidade total de conflitos?}
 
-Para responder à QP1, contabilizou-se o número total de blocos de conflito reportados por cada ferramenta na amostra analisada. A Tabela \ref{tab:resultados-quantitativos} apresenta um comparativo entre o algoritmo tradicional (\textit{diff3}) e a abordagem proposta (\textit{Haskell-SepMerge}).
+Para responder à QP1, contabilizou-se o número total de blocos de conflito reportados por cada ferramenta na amostra analisada. A Tabela \ref{tab:resultados-quantitativos} apresenta o comparativo entre o algoritmo tradicional (\textit{diff3}) e a ferramenta proposta (\textit{Haskell-SepMerge}).
 
 \begin{table}[htb]
-\caption{Comparativo de Conflitos e Arquivos Conflitantes (Amostra do repositório Cabal)}
+\caption{Comparativo de Conflitos e Arquivos Conflitantes (Amostra de 758 cenários)}
 \label{tab:resultados-quantitativos}
 \centering
 \begin{tabular}{lccc}
 \hline
-\textbf{Métrica} & \textbf{Diff3} & \textbf{Haskell-SepMerge} & \textbf{Variação (\%)} \\ \hline
-Total de Conflitos & 182 & 345 & +89,5\% \\
-Arquivos com Conflitos & 45 & 41 & -8,8\% \\
-Cenários Resolvidos (Totalmente) & 0 & 4 & N/A \\ \hline
+\textbf{Métrica} & \textbf{Diff3} & \textbf{Haskell-SepMerge} & \textbf{Variação} \\ \hline
+Total de Conflitos (Blocos) & 3.532 & 13.977 & +295,72\% \\
+Arquivos com Conflitos & 757 & 696 & -8,06\% \\
+Cenários Resolvidos (0 conflitos) & 0 & 61 & N/A \\ \hline
 \end{tabular}
 \legend{Fonte: Elaborado pelo autor com base nos dados do experimento.}
 \end{table}
 
-Observa-se que, contrariando a expectativa intuitiva de redução, o Haskell-SepMerge apresentou um **aumento significativo no número absoluto de conflitos** (aproximadamente 90\% nesta amostra). Este resultado alinha-se diretamente com os achados de \citeonline{clementino2021textual} para a linguagem Java, que reportaram um aumento de 105\% no modo mais granular.
+Os dados consolidados revelam um **aumento expressivo na quantidade total de conflitos** (+295,72\%). Este resultado confirma e intensifica a tendência de granularidade observada em estudos similares para Java (+105\%) \cite{clementino2021textual}.
 
-Esse fenômeno ocorre devido à **granularidade** da ferramenta. Uma mudança complexa que o \textit{diff3} agrupa em um único bloco de conflito grande (``tudo isso mudou'') é frequentemente decomposta pelo Haskell-SepMerge em múltiplos conflitos menores, separados por trechos de código que a ferramenta conseguiu integrar com sucesso.
+A inclusão do repositório \textit{Stack} foi determinante para este índice. Por se tratar de uma ferramenta de \textit{build}, o código contém extensas definições de registros (\textit{Records}) para configuração. Nestes arquivos, o Haskell-SepMerge fragmentou blocos únicos de conflito em dezenas de micro-conflitos de atribuição.
 
 \section{QP2: A ferramenta reduz a quantidade de cenários com conflitos?}
 
-Apesar do aumento no número total de conflitos (granularidade), a segunda linha da Tabela \ref{tab:resultados-quantitativos} demonstra uma **redução na quantidade de arquivos com conflitos**.
+Apesar da explosão no número de blocos individuais, a segunda linha da Tabela \ref{tab:resultados-quantitativos} demonstra uma **redução de 8,06\% na quantidade de arquivos que exigem atenção manual** (de 757 para 696).
 
-Isso indica que, em certos cenários, a granularidade extra permitiu que a ferramenta resolvesse \textbf{todas} as divergências de um arquivo, eliminando-o da lista de pendências do desenvolvedor. Na amostra do repositório \textit{Cabal}, observou-se a redução de 45 para 41 arquivos conflitantes.
-
-Os casos de sucesso total (onde o número de conflitos caiu de $N$ para $0$) ocorreram principalmente em arquivos de configuração e definições de tipos, como \texttt{DistDirLayout.hs} e \texttt{PackageTester.hs}. Nesses casos, o Haskell-SepMerge foi capaz de isolar sintaticamente as inserções e realizar a integração automática, respondendo positivamente à QP2.
+Isso significa que, em **61 cenários**, a granularidade extra permitiu que a ferramenta resolvesse \textbf{todas} as divergências do arquivo automaticamente. Esses são casos onde o desenvolvedor não precisaria abrir o editor para realizar o \textit{merge}, representando um ganho direto de produtividade.
 
 \section{Análise de Falsos Positivos e Negativos (QP3 e QP4)}
 
-\subsection{Redução de Falsos Positivos (QP3)}
-A eficácia da ferramenta na redução de Falsos Positivos foi validada qualitativamente. Um caso notável foi identificado no commit \texttt{3fa5b7d} do \textit{ShellCheck}.
-Neste cenário, o ramo \textit{Left} modificou uma expressão existente, enquanto o ramo \textit{Right} inseriu uma nova cláusula \texttt{case} na linha imediatamente anterior. O \textit{diff3} falhou em separar as mudanças devido à proximidade física. O Haskell-SepMerge, utilizando o separador \texttt{->}, isolou a inserção como um bloco independente, resolvendo o merge automaticamente.
+\subsection{Sucesso na Redução de Falsos Positivos (QP3)}
+Os 61 cenários classificados como "Resolvidos" representam a redução de Falsos Positivos. Nesses casos, o \textit{diff3} reportou conflito, mas o Haskell-SepMerge integrou o código automaticamente. A análise qualitativa de casos como o commit \texttt{3fa5b7d} (\textit{ShellCheck}) confirmou que essa resolução ocorre graças ao isolamento de inserções adjacentes.
 
-\subsection{Ocorrência de Falsos Negativos (QP4)}
-A análise estendida ao repositório \textit{Cabal} revelou a ocorrência de Falsos Negativos (onde a ferramenta reporta zero conflitos, mas o resultado difere do manual). No entanto, uma análise qualitativa revelou que, em alguns casos, a divergência decorreu de falha humana, e não da ferramenta.
+\subsection{Análise de Divergência Semântica (QP4)}
+A ferramenta gerou alertas de divergência em relação ao \textit{merge} manual. Uma análise qualitativa revelou que, em alguns casos, a ferramenta superou o humano.
 
-Um exemplo emblemático ocorreu no arquivo \texttt{CmdClean.hs} (commit \texttt{6f19128}). O ramo \textit{Left} renomeou um comando para \texttt{"v2-clean"} e atualizou sua documentação. O ramo \textit{Right} alterou apenas a indentação.
+Um exemplo emblemático ocorreu no arquivo \texttt{CmdClean.hs} (commit \texttt{6f19128} do \textit{Cabal}). O ramo \textit{Left} renomeou um comando para \texttt{"v2-clean"} e atualizou sua documentação. O ramo \textit{Right} alterou apenas a indentação.
 
 \begin{figure}[H]
     \centering
@@ -305,10 +303,10 @@ Um exemplo emblemático ocorreu no arquivo \texttt{CmdClean.hs} (commit \texttt{
     \legend{Fonte: Elaborado pelo autor com dados do repositório Cabal.}
 \end{figure}
 
-O Haskell-SepMerge realizou a integração perfeita (Figura \ref{fig:caso-cabal}). Em contrapartida, a resolução manual resultou em uma inconsistência: o nome do comando foi atualizado, mas a documentação foi revertida para a versão antiga, provavelmente um erro de atenção humana ao lidar com o conflito de formatação. Isso evidencia que a ferramenta pode superar a precisão humana em cenários mistos.
+O Haskell-SepMerge realizou a integração perfeita (Figura \ref{fig:caso-cabal}). Em contrapartida, a resolução manual resultou em uma inconsistência: o nome do comando foi atualizado, mas a documentação foi revertida para a versão antiga, provavelmente um erro de atenção humana. Isso evidencia que a ferramenta pode ser mais robusta que a intervenção manual em conflitos mistos de formatação e lógica.
 
-\section{Impacto na Legibilidade}
-Observou-se que a alta granularidade (quebra nos separadores como \texttt{=}) pode fragmentar visualmente os conflitos que não são resolvidos automaticamente, dificultando a leitura. A implementação de um modo ``Simples'' (apenas operadores funcionais) mostrou-se eficaz para mitigar este problema, oferecendo um equilíbrio entre precisão e ergonomia.
+\section{Impacto na Legibilidade e Layout}
+Observou-se que a inserção de quebras de linha para isolar separadores pode alterar o \textit{layout} do código. Em assinaturas de tipo complexas (com \texttt{=>}), a ferramenta tende a isolar o operador em uma nova linha. Embora o código gerado seja sintaticamente válido para o compilador GHC na maioria dos casos, ele viola as convenções de estilo da linguagem, sugerindo a necessidade de uso conjunto com ferramentas de formatação automática (\textit{code formatters}) no pós-processamento.
 
 % CAPÍTULO 5
 \chapter{Conclusão}
@@ -318,13 +316,13 @@ Este trabalho apresentou o **Haskell-SepMerge**, uma adaptação da técnica de 
 
 Retomando as questões de pesquisa:
 \begin{itemize}
-    \item **QP1 (Total de Conflitos):** O Haskell-SepMerge aumenta a quantidade total devido à granularidade.
-    \item **QP2 (Cenários Resolvidos):** A ferramenta reduz o número de arquivos com conflitos pendentes.
-    \item **QP3 (Falsos Positivos):** A eficácia na redução de falsos positivos foi comprovada em diversos cenários.
-    \item **QP4 (Falsos Negativos):** A ferramenta apresentou divergências em relação ao manual, mas a análise qualitativa indicou que, em casos críticos, o Haskell-SepMerge estava correto e o humano equivocado.
+    \item **QP1 (Total de Conflitos):** O Haskell-SepMerge aumenta a quantidade total (+295\%) devido à granularidade extrema.
+    \item **QP2 (Cenários Resolvidos):** A ferramenta reduz o número de arquivos com conflitos pendentes (-8\%).
+    \item **QP3 (Falsos Positivos):** A eficácia na redução de falsos positivos foi comprovada em 61 cenários da amostra.
+    \item **QP4 (Falsos Negativos):** A ferramenta apresentou divergências em relação ao manual, mas a análise qualitativa indicou que, em casos críticos, o Haskell-SepMerge estava correto e o humano equivocado, embora limitações semânticas (escopo de variáveis) ainda existam.
 \end{itemize}
 
-Conclui-se que a ferramenta é viável e segura, recomendando-se seu uso com uma configuração flexível de separadores. Como trabalhos futuros, sugere-se a integração da ferramenta como um \textit{driver} nativo do Git.
+Conclui-se que a ferramenta é viável e segura, recomendando-se seu uso com uma configuração flexível de separadores. Como trabalhos futuros, sugere-se a integração da ferramenta como um \textit{driver} nativo do Git e a incorporação de um formatador automático na etapa de pós-processamento.
 
 % ----------------------------------------------------------
 % ELEMENTOS PÓS-TEXTUAIS

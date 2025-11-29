@@ -10,7 +10,7 @@ OUTPUT_DIR = "./casos_estudo"
 
 # Seus casos encontrados
 CASOS_INTERESSANTES = [
-    ("stack", "802afc1", "src/Stack/Build/ConstructPlan.hs")
+    ("stack", "fa878f9", "src/Stack/Package.hs",)
 ]
 
 # URLs dos repositórios para clone automático
