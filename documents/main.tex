@@ -17,6 +17,7 @@
 \usepackage{graphicx}
 \usepackage{microtype}
 \usepackage{float}    % Para posicionamento exato de figuras [H]
+\usepackage{multirow} % Para tabelas mais complexas
 
 % Pacote para mostrar código fonte
 \usepackage{listings}
@@ -72,17 +73,17 @@ Curso de Bacharelado em Engenharia de Software
 
 % RESUMO
 \begin{resumo}
-O desenvolvimento de software moderno depende de sistemas de controle de versão para integrar modificações paralelas. As ferramentas tradicionais de \textit{merge} não estruturado, como o \textit{diff3}, operam linha a linha e frequentemente reportam falsos conflitos quando alterações ocorrem em linhas adjacentes. Abordagens estruturadas resolvem esse problema utilizando a sintaxe da linguagem, mas possuem alto custo de implementação. Recentemente, a técnica CSDiff (\textit{Custom Separators Diff}) foi proposta como uma alternativa híbrida, utilizando separadores sintáticos para segmentar o código antes da comparação. Este trabalho propõe a ferramenta \textbf{Haskell-SepMerge}, uma adaptação da técnica CSDiff para a linguagem Haskell, cujas características de sintaxe posicional e operadores funcionais desafiam os algoritmos tradicionais. Através de um estudo empírico com repositórios reais, como \textit{ShellCheck}, \textit{Cabal} e \textit{Stack}, demonstrou-se que o Haskell-SepMerge é capaz de reduzir falsos positivos em cenários de inserção adjacente e, em casos específicos, produzir integrações semanticamente superiores às manuais, embora aumente significativamente a granularidade visual dos conflitos.
+O desenvolvimento de software moderno depende de sistemas de controle de versão para integrar modificações paralelas. As ferramentas tradicionais de \textit{merge} não estruturado, como o \textit{diff3}, operam linha a linha e frequentemente reportam falsos conflitos em linguagens densas. Abordagens estruturadas resolvem esse problema utilizando a árvore sintática, mas possuem alto custo de implementação. Como alternativa, a técnica CSDiff propõe o uso de separadores sintáticos para segmentar o código. Este trabalho propõe o \textbf{Haskell-SepMerge}, uma adaptação do CSDiff para Haskell, uma linguagem funcional cuja sintaxe posicional (\textit{layout rule}) desafia a reconstrução de código. Através de um estudo empírico analisando 388 cenários de conflito reais, avaliou-se três estratégias de reconstrução. Os resultados demonstraram que a ferramenta aumenta a granularidade dos conflitos (+253\%), mas reduz a quantidade de arquivos conflitantes em 10,8\%. A comparação revelou que a "Colagem Plana" (Estratégia 1) obteve a maior taxa de sucesso sintático (41,9\%), superando tanto a "Colagem Idiomática" (18,6\%) quanto a "Colagem Híbrida Protegida" (20,9\%). Isso evidencia que, em Haskell, a preservação da estrutura original é mais eficaz do que tentativas de proteção léxica ou formatação artificial.
 
-\textbf{Palavras-chave}: Engenharia de Software. Merge de Código. Haskell. Haskell-SepMerge.
+\textbf{Palavras-chave}: Engenharia de Software. Merge de Código. Haskell. Haskell-SepMerge. Layout Rule.
 \end{resumo}
 
 % ABSTRACT
 \begin{resumo}[Abstract]
 \begin{otherlanguage*}{english}
-Modern software development relies on version control systems to integrate parallel modifications. Traditional unstructured merge tools, such as \textit{diff3}, operate line-by-line and often report false conflicts when changes occur in adjacent lines. Structured approaches address this using language syntax but incur high implementation costs. Recently, the CSDiff (Custom Separators Diff) technique was proposed as a hybrid alternative, using syntactic separators to segment code before comparison. This work proposes \textbf{Haskell-SepMerge}, an adaptation of the CSDiff technique for the Haskell language, whose positional syntax and functional operators challenge traditional algorithms. Through an empirical study with real repositories, such as \textit{ShellCheck}, \textit{Cabal}, and \textit{Stack}, it was demonstrated that Haskell-SepMerge can reduce false positives in adjacent insertion scenarios and, in specific cases, produce semantically superior integrations compared to manual merges, although it significantly increases the visual granularity of conflicts.
+Modern software development relies on version control systems to integrate parallel modifications. Traditional unstructured merge tools, such as \textit{diff3}, operate line-by-line and often report false conflicts in dense languages. Structured approaches address this using syntax trees but incur high costs. Alternatively, the CSDiff technique proposes using syntactic separators to segment code. This work proposes \textbf{Haskell-SepMerge}, an adaptation of CSDiff for Haskell, a functional language whose positional syntax (layout rule) challenges code reconstruction. Through an empirical study analyzing 388 real conflict scenarios, three reconstruction strategies were evaluated. Results showed that the tool increases conflict granularity (+253\%) but reduces the number of conflicting files by 10.8\%. The comparison revealed that "Flat Glue" (Strategy 1) achieved the highest syntactic success rate (41.9\%), outperforming both "Idiomatic Glue" (18.6\%) and "Protected Hybrid Glue" (20.9\%). This highlights that in Haskell, preserving the original structure is more effective than lexical protection or artificial formatting attempts.
 
-\textbf{Keywords}: Software Engineering. Code Merge. Haskell. Haskell-SepMerge.
+\textbf{Keywords}: Software Engineering. Code Merge. Haskell. Haskell-SepMerge. Layout Rule.
 \end{otherlanguage*}
 \end{resumo}
 
@@ -102,227 +103,144 @@ Modern software development relies on version control systems to integrate paral
 
 A colaboração em projetos de software exige que múltiplos desenvolvedores alterem a mesma base de código simultaneamente. Para gerenciar essas alterações, Sistemas de Controle de Versão (VCS) utilizam algoritmos de \textit{merge} (integração) para combinar as modificações \cite{mens2002survey}.
 
-A técnica predominante na indústria é o \textit{merge} textual não estruturado, exemplificado pelo algoritmo \textit{diff3} \cite{khanna2007formal}. Esta abordagem trata o código-fonte como uma sequência simples de linhas de texto, comparando-as sequencialmente. Embora eficiente e agnóstico à linguagem, o \textit{diff3} possui limitações significativas: frequentemente reporta conflitos falsos (falsos positivos) quando as modificações ocorrem na mesma linha ou em linhas consecutivas, mesmo que não haja interferência lógica entre elas.
+A técnica predominante na indústria é o \textit{merge} textual não estruturado, exemplificado pelo algoritmo \textit{diff3} \cite{khanna2007formal}. Esta abordagem trata o código-fonte como uma sequência simples de linhas de texto. Embora eficiente, o \textit{diff3} possui limitações significativas: frequentemente reporta conflitos falsos (falsos positivos) quando as modificações ocorrem na mesma linha ou em linhas consecutivas.
 
-Para mitigar esses problemas, \citeonline{clementino2021textual} propuseram o \textit{Custom Separators Diff} (CSDiff). Esta técnica propõe um pré-processamento do texto baseado em separadores sintáticos da linguagem (como ``;'' ou ``\{'' em Java), aumentando a granularidade da comparação sem o custo de construir analisadores sintáticos completos (\textit{parsers}).
+Para mitigar esses problemas, \citeonline{clementino2021textual} propuseram o \textit{Custom Separators Diff} (CSDiff). Esta técnica propõe um pré-processamento do texto baseado em separadores sintáticos da linguagem, aumentando a granularidade da comparação.
 
 \section{Problema de Pesquisa}
-Enquanto o CSDiff foi validado para Java, sua eficácia em linguagens funcionais como **Haskell** permanece inexplorada. Haskell apresenta desafios únicos para o \textit{merge} textual, incluindo:
-\begin{itemize}
-    \item A regra de \textit{layout} (indentação significativa), que define blocos de código sem marcadores explícitos;
-    \item O uso denso de operadores customizados em linhas únicas (e.g., assinaturas de tipo e \textit{pattern matching});
-    \item Definições concisas onde múltiplas instruções lógicas ocupam a mesma linha física.
-\end{itemize}
+Enquanto o CSDiff foi validado para Java, sua eficácia em linguagens funcionais como **Haskell** permanece inexplorada. Haskell apresenta desafios únicos, sendo o principal a **Regra de Layout** (\textit{layout rule}). Em Haskell, o escopo de blocos é definido pela indentação. Ferramentas de \textit{merge} textual que alteram espaços em branco podem, inadvertidamente, alterar a semântica do programa ou impedir sua compilação.
 
-Neste contexto, este trabalho investiga: \textit{A abordagem de merge baseada em separadores sintáticos é eficaz para reduzir conflitos de integração na linguagem Haskell?}
+Neste contexto, este trabalho investiga: \textit{Como adaptar a abordagem baseada em separadores para lidar com a sensibilidade posicional da linguagem Haskell?}
 
 \section{Questões de Pesquisa}
-Para responder ao problema proposto, foram definidas as seguintes Questões de Pesquisa (QPs), que guiarão o estudo empírico:
-
 \begin{itemize}
-    \item \textbf{QP1:} A ferramenta proposta (Haskell-SepMerge) reduz a quantidade total de conflitos reportados em comparação ao \textit{merge} padrão (Diff3)?
-    \item \textbf{QP2:} A ferramenta reduz a quantidade de arquivos ou cenários com conflitos pendentes?
-    \item \textbf{QP3:} A ferramenta é capaz de reduzir Falsos Positivos (resolvendo conflitos que o Diff3 não consegue)?
-    \item \textbf{QP4:} A ferramenta introduz Falsos Negativos (integrações incorretas ou divergentes do manual)?
+    \item \textbf{QP1:} O Haskell-SepMerge reduz a quantidade total de conflitos reportados?
+    \item \textbf{QP2:} A ferramenta reduz a quantidade de arquivos que exigem intervenção manual?
+    \item \textbf{QP3:} Qual estratégia de reconstrução produz mais código sintaticamente válido?
+    \item \textbf{QP4:} A ferramenta introduz Falsos Negativos (divergências semânticas)?
 \end{itemize}
 
 \section{Objetivos}
 O objetivo geral deste trabalho é desenvolver e avaliar a ferramenta **Haskell-SepMerge**, uma adaptação da técnica CSDiff para a linguagem Haskell. Os objetivos específicos são:
 \begin{enumerate}
-    \item Identificar e implementar o conjunto de separadores sintáticos relevantes para Haskell (e.g., \texttt{::}, \texttt{->}, \texttt{=});
-    \item Desenvolver um protótipo robusto da ferramenta capaz de lidar com peculiaridades de ambiente (como finais de linha CRLF/LF);
-    \item Realizar um estudo empírico minerando repositórios reais de Haskell (como \textit{ShellCheck}, \textit{Stack} e \textit{Cabal}) para coletar dados que respondam às QPs;
-    \item Analisar qualitativamente os cenários de conflito para identificar casos de redução de falsos positivos e potenciais falsos negativos.
+    \item Identificar o conjunto de separadores sintáticos relevantes para Haskell;
+    \item Implementar e comparar diferentes estratégias de reconstrução de código (Plana, Idiomática e Híbrida) frente à Regra de Layout;
+    \item Desenvolver uma infraestrutura de testes automatizada para validar a eficácia e segurança da ferramenta;
+    \item Realizar um estudo empírico com repositórios reais para comparar o desempenho da ferramenta proposta frente ao algoritmo padrão \textit{diff3}.
 \end{enumerate}
 
 % CAPÍTULO 2
 \chapter{Fundamentação Teórica}
 \label{chap:fundamentacao}
 
-Este capítulo apresenta os conceitos fundamentais necessários para a compreensão da proposta deste trabalho. Inicialmente, discute-se o problema da integração de software e as limitações dos algoritmos tradicionais. Em seguida, abordam-se as estratégias de \textit{merge} estruturado e a abordagem híbrida CSDiff. Por fim, são detalhadas as características sintáticas da linguagem Haskell que impõem desafios específicos ao processo de integração.
+\section{Integração de Software e suas Abordagens}
+O processo de integração visa reconciliar mudanças paralelas. As abordagens podem ser classificadas em textuais e estruturadas.
 
-\section{Sistemas de Controle de Versão e Integração}
-O desenvolvimento de software em equipe exige o uso de Sistemas de Controle de Versão (VCS), como o Git, para gerenciar a evolução do código-fonte. Uma função crítica desses sistemas é o \textit{merge} (integração), que combina modificações realizadas paralelamente em diferentes ramos (\textit{branches}) de desenvolvimento \cite{mens2002survey}.
+A abordagem textual (\textit{diff3}) é agnóstica à linguagem, rápida e robusta, mas sofre com a falta de contexto semântico. Já o \textit{Merge Estruturado} \cite{apel2011semistructured} opera sobre a Árvore Sintática Abstrata (AST). Embora elimine conflitos de formatação, o merge estruturado enfrenta barreiras de adoção: alto custo de desenvolvimento de \textit{parsers} e incapacidade de processar arquivos com erros de sintaxe momentâneos.
 
-O cenário padrão de integração envolve três artefatos: a versão base (ancestral comum), a versão local (\textit{left}) e a versão remota (\textit{right}). O objetivo do algoritmo de \textit{merge} é produzir uma versão integrada que contenha todas as mudanças não conflitantes.
+A técnica CSDiff surge como um meio-termo: utiliza conhecimento sintático leve (apenas separadores) para segmentar o texto, mantendo o motor de comparação textual.
 
-\subsection{O Algoritmo Diff3 e o Merge Textual}
-A técnica predominante na indústria é o \textit{merge} não estruturado, ou textual. O algoritmo mais utilizado é o \textit{diff3}, formalizado por \citeonline{khanna2007formal}. Este algoritmo opera tratando o código-fonte como uma sequência de linhas de texto, sem conhecimento da sintaxe da linguagem de programação.
-
-O \textit{diff3} identifica blocos de linhas que foram alterados em relação à base. Se as alterações ocorrem em regiões distintas do arquivo, o algoritmo as aceita automaticamente. No entanto, se as alterações ocorrem na mesma linha ou em linhas adjacentes, o algoritmo reporta um **conflito físico**, exigindo intervenção manual.
-
-Embora eficiente, a abordagem textual sofre de limitações significativas:
-\begin{itemize}
-    \item **Falsos Positivos:** Ocorrem quando alterações em linhas consecutivas são marcadas como conflito, mesmo que sejam logicamente independentes (ex: adicionar dois métodos novos em sequência).
-    \item **Falsos Negativos:** Ocorrem quando o algoritmo integra automaticamente alterações que, embora textualmente distantes, interferem na semântica do programa, gerando código com erros de compilação ou lógica.
-\end{itemize}
-
-\section{Estratégias de Merge Estruturado}
-Para superar as limitações da abordagem textual, pesquisadores propuseram o \textit{merge} estruturado e semiestruturado \cite{apel2011semistructured}. Essas técnicas não operam sobre linhas, mas sobre a estrutura sintática do programa.
-
-O processo envolve realizar o \textit{parsing} dos arquivos para construir Árvores Sintáticas Abstratas (ASTs). A integração é então realizada comparando os nós dessas árvores. Segundo \citeonline{cavalcanti2019impact}, essa abordagem elimina conflitos de formatação e ordenação, pois a árvore abstrai detalhes como espaços em branco e a ordem de declaração de métodos independentes.
-
-Entretanto, o \textit{merge} estruturado apresenta barreiras de adoção:
-\begin{enumerate}
-    \item **Custo de Implementação:** Exige um analisador sintático completo e robusto para cada linguagem suportada.
-    \item **Desempenho:** O processo de construção e comparação de árvores é computacionalmente mais custoso que a comparação de texto.
-    \item **Fragilidade:** Arquivos com erros de sintaxe não podem ser processados, pois impedem a construção da AST.
-\end{enumerate}
-
-\section{A Abordagem Híbrida: CSDiff}
-Diante do \textit{trade-off} entre a simplicidade do texto e a precisão da estrutura, \citeonline{clementino2021textual} propuseram o \textit{Custom Separators Diff} (CSDiff). Esta abordagem busca simular o comportamento de ferramentas estruturadas mantendo a base algorítmica textual.
-
-A premissa do CSDiff é que muitos conflitos ocorrem porque o \textit{diff3} usa a quebra de linha (\texttt{\textbackslash n}) como única unidade de separação. Em linguagens modernas, muitas instruções lógicas podem ocupar a mesma linha física. O CSDiff resolve isso através de um pré-processamento que utiliza **separadores sintáticos** específicos da linguagem (como ``;'', ``\{'', ``\}'' em Java) para aumentar a granularidade do texto.
-
-O fluxo de execução do CSDiff consiste em:
-\begin{enumerate}
-    \item **Segmentação:** O código original é reescrito, inserindo quebras de linha artificiais e marcadores únicos ao redor de cada separador sintático identificado. Por exemplo, a expressão \texttt{int a=1;} torna-se uma sequência vertical de tokens.
-    \item **Integração:** O algoritmo \textit{diff3} padrão é executado sobre os arquivos segmentados. Como o código está ``expandido'', mudanças que antes colidiam na mesma linha passam a ocorrer em linhas distintas, permitindo a resolução automática.
-    \item **Reconstrução:** Os marcadores são removidos e o código é reagrupado, restaurando (idealmente) o formato original.
-\end{enumerate}
-
-\section{Desafios Sintáticos da Linguagem Haskell}
-A escolha da linguagem Haskell para este estudo de adaptação justifica-se por suas características sintáticas que diferem radicalmente das linguagens imperativas (como Java e C++) onde o CSDiff foi originalmente validado.
-
-Segundo a definição da linguagem \cite{marlow2010haskell}, Haskell é uma linguagem funcional pura que utiliza uma sintaxe posicional forte. Dois aspectos são particularmente desafiadores para ferramentas de \textit{merge}:
+\section{Desafios Sintáticos do Haskell}
+A escolha da linguagem Haskell justifica-se por suas características desafiadoras.
 
 \subsection{A Regra de Layout}
-Diferente de Java, que usa chaves para delimitar blocos, Haskell utiliza a \textit{layout rule} (indentação significativa). O escopo de funções, condicionais e listas é definido pelo alinhamento vertical dos caracteres. Ferramentas de \textit{merge} textual que não preservam rigorosamente o espaçamento podem introduzir erros semânticos silenciosos ou quebrar a compilação.
+Diferente de linguagens baseadas em chaves (como Java), Haskell utiliza indentação significativa \cite{marlow2010haskell}. O aninhamento de blocos é definido pelo alinhamento vertical. Isso cria um paradoxo: para resolver o conflito, a ferramenta precisa inserir quebras de linha, destruindo a estrutura de colunas original que precisa ser restaurada posteriormente.
 
 \subsection{Densidade de Operadores}
-Haskell favorece construções concisas. É comum encontrar definições de tipos, \textit{pattern matching} e lógica de negócios complexa em uma única linha, utilizando operadores customizados como separadores lógicos.
-Por exemplo, a assinatura de uma função \texttt{f :: Int -> Int -> Int} usa o operador \texttt{->} como separador. Se dois desenvolvedores alteram partes diferentes dessa assinatura na mesma linha, o \textit{diff3} reportará conflito. A adaptação da técnica para Haskell, portanto, exige a identificação precisa desses operadores funcionais (e.g., \texttt{::}, \texttt{=>}, \texttt{<-}, \texttt{@}) para atuar como os novos delimitadores de contexto.
+Haskell favorece código conciso. Assinaturas de tipo e definições frequentemente compartilham a mesma linha, separadas por operadores como \texttt{::} ou \texttt{=>}. O \textit{merge} padrão enxerga qualquer mudança nessa linha densa como um conflito total.
 
 % CAPÍTULO 3
 \chapter{Metodologia}
 \label{chap:metodologia}
 
-Para alcançar os objetivos e responder às questões de pesquisa, foi desenvolvida a ferramenta **Haskell-SepMerge** e uma infraestrutura de automação experimental.
-
 \section{A Ferramenta Haskell-SepMerge}
-O Haskell-SepMerge foi implementado utilizando \textit{Bash} e \textit{AWK}. Diferente da versão original do CSDiff para Java, a adaptação para Haskell exigiu o tratamento de duas classes de separadores:
-\begin{itemize}
-    \item \textbf{Separadores Funcionais:} \texttt{::} (tipagem), \texttt{->} (lambda/case), \texttt{=>} (restrição), \texttt{<-} (list comprehension) e \texttt{@} (as-pattern).
-    \item \textbf{Separadores Estruturais:} \texttt{=} (atribuição), \texttt{|} (guards), \texttt{,} (listas) e parênteses.
-\end{itemize}
+A ferramenta foi desenvolvida em \textit{Bash} e \textit{AWK}. Foram implementados dois modos de operação (Simples e Completo) e três estratégias de reconstrução para avaliação.
 
-Foi implementada uma máquina de estados no pós-processamento para garantir a reconstrução correta do código, lidando com problemas de final de linha (CRLF vs LF) comuns em ambientes Windows/WSL. Adicionalmente, implementou-se um filtro para ignorar separadores dentro de comentários de linha (\texttt{--}) e uma lógica de proteção de tokens para evitar que separadores compostos (como \texttt{=>}) fossem fragmentados incorretamente por separadores simples (como \texttt{=}).
+\subsection{Estratégias de Reconstrução Avaliadas}
+Para enfrentar o problema da *Layout Rule*, foram comparadas três versões do algoritmo de pós-processamento:
 
-\section{Infraestrutura de Avaliação}
-Para validar o Haskell-SepMerge, desenvolveu-se um script em Python (\texttt{experiment\_runner.py}) inspirado na infraestrutura \textit{MiningFramework} \cite{clementino2021textual}. O script executa:
 \begin{enumerate}
-    \item Clona repositórios Haskell (e.g., \textit{ShellCheck}, \textit{Stack}, \textit{Cabal});
-    \item Itera sobre \textit{commits} de merge, reconstruindo as versões Base, Left e Right;
-    \item Filtra merges triviais (onde não houve mudança real nos arquivos);
-    \item Executa paralelamente o \textit{diff3} e o \textit{Haskell-SepMerge};
-    \item Compara os resultados com o \textit{merge} manual (gabarito) utilizando uma comparação ``minificada'' (ignorando espaços em branco) para focar na equivalência semântica e evitar falsos negativos cosméticos.
+    \item \textbf{Estratégia 1 (Colagem Plana):} Prioriza a estabilidade. Reconstrói o arquivo tentando "colar" os tokens na mesma linha física anterior sempre que possível, preservando o espaçamento original dos ramos.
+    \item \textbf{Estratégia 2 (Colagem Idiomática):} Tenta embelezar o código. Ao encontrar separadores verticais (como \texttt{=>}), insere uma quebra de linha e aplica uma indentação fixa de 4 espaços.
+    \item \textbf{Estratégia 3 (Híbrida/Protegida):} Combina a lógica da Estratégia 1 com uma camada extra de proteção léxica. Tokens compostos (como \texttt{||} ou \texttt{==}) são substituídos por marcadores únicos (\texttt{HSS\_...}) antes do merge para evitar corrupção, sendo restaurados ao final.
 \end{enumerate}
+
+\section{Infraestrutura e Processo de Análise}
+Para validar os resultados, desenvolveu-se um script de automação em Python que opera da seguinte forma para cada cenário minerado:
+\begin{enumerate}
+    \item \textbf{Execução:} Roda o \textit{diff3} e as três variações do \textit{Haskell-SepMerge} em paralelo.
+    \item \textbf{Métricas:} Contabiliza conflitos e arquivos resolvidos.
+    \item \textbf{Validação (Parse Check):} Se resolvido, invoca \texttt{ghc -fno-code} para verificar a validade sintática.
+    \item \textbf{Equivalência:} Compara o resultado automático com a resolução manual, ignorando espaços em branco.
+\end{enumerate}
+
+Foram minerados os repositórios \textit{ShellCheck}, \textit{Pandoc}, \textit{Cabal} e \textit{Stack}, totalizando 388 cenários de conflito.
 
 % CAPÍTULO 4
 \chapter{Resultados e Discussão}
 \label{chap:resultados}
 
-O experimento foi conduzido minerando os repositórios \textit{ShellCheck}, \textit{Cabal} e \textit{Stack}, totalizando a análise de 758 cenários de \textit{merge} conflitantes. Os dados coletados foram consolidados para responder às questões de pesquisa (QPs) definidas na introdução.
+Esta seção apresenta os dados consolidados do experimento no modo Completo (\textit{--full}).
 
-\section{QP1: A ferramenta reduz a quantidade total de conflitos?}
-
-Para responder à QP1, contabilizou-se o número total de blocos de conflito reportados por cada ferramenta na amostra analisada. A Tabela \ref{tab:resultados-quantitativos} apresenta o comparativo entre o algoritmo tradicional (\textit{diff3}) e a ferramenta proposta (\textit{Haskell-SepMerge}).
+\section{Granularidade e Eficácia (QP1 e QP2)}
+A Tabela \ref{tab:granularidade} apresenta o impacto da ferramenta na quantidade de conflitos.
 
 \begin{table}[htb]
-\caption{Comparativo de Conflitos e Arquivos Conflitantes (Amostra de 758 cenários)}
-\label{tab:resultados-quantitativos}
+\caption{Comparativo de Conflitos e Arquivos Pendentes}
+\label{tab:granularidade}
 \centering
 \begin{tabular}{lccc}
 \hline
-\textbf{Métrica} & \textbf{Diff3} & \textbf{Haskell-SepMerge} & \textbf{Variação} \\ \hline
-Total de Conflitos (Blocos) & 3.532 & 13.977 & +295,72\% \\
-Arquivos com Conflitos & 757 & 696 & -8,06\% \\
-Cenários Resolvidos (0 conflitos) & 0 & 61 & N/A \\ \hline
+\textbf{Métrica} & \textbf{Diff3 (Padrão)} & \textbf{Haskell-SepMerge} & \textbf{Variação} \\ \hline
+Total de Conflitos & 2.191 & $\approx$ 7.700 & \textbf{+253\%} \\
+Arquivos com Conflitos & 387 & 345 & \textbf{-10,85\%} \\ \hline
 \end{tabular}
-\legend{Fonte: Elaborado pelo autor com base nos dados do experimento.}
+\legend{Fonte: Elaborado pelo autor.}
 \end{table}
 
-Os dados consolidados revelam um **aumento expressivo na quantidade total de conflitos** (+295,72\%). Este resultado confirma e intensifica a tendência de granularidade observada em estudos similares para Java (+105\%) \cite{clementino2021textual}.
+Observa-se uma explosão na granularidade (+253\%), comum a todas as estratégias. No entanto, essa fragmentação permitiu resolver automaticamente 43 arquivos (redução de 10,85\% no esforço manual).
 
-A inclusão do repositório \textit{Stack} foi determinante para este índice. Por se tratar de uma ferramenta de \textit{build}, o código contém extensas definições de registros (\textit{Records}) para configuração. Nestes arquivos, o Haskell-SepMerge fragmentou blocos únicos de conflito em dezenas de micro-conflitos de atribuição.
+\section{Análise de Validade Sintática (QP3)}
+A validação com o GHC revelou diferenças críticas. A Tabela \ref{tab:sintaxe} mostra o sucesso das estratégias nas 43 resoluções automáticas.
 
-\section{QP2: A ferramenta reduz a quantidade de cenários com conflitos?}
+\begin{table}[htb]
+\caption{Taxa de Sucesso Sintático por Estratégia de Reconstrução}
+\label{tab:sintaxe}
+\centering
+\begin{tabular}{lcc}
+\hline
+\textbf{Estratégia} & \textbf{Arquivos Válidos (ParseOK)} & \textbf{Taxa de Sucesso} \\ \hline
+Estratégia 1 (Colagem Plana) & \textbf{18} & \textbf{41,9\%} \\
+Estratégia 3 (Híbrida/Protegida) & 9 & 20,9\% \\
+Estratégia 2 (Colagem Idiomática) & 8 & 18,6\% \\ \hline
+\end{tabular}
+\legend{Fonte: Elaborado pelo autor.}
+\end{table}
 
-Apesar da explosão no número de blocos individuais, a segunda linha da Tabela \ref{tab:resultados-quantitativos} demonstra uma **redução de 8,06\% na quantidade de arquivos que exigem atenção manual** (de 757 para 696).
+**A Estratégia 1 (mais simples) obteve o melhor desempenho (41,9\%)**, superando as abordagens mais complexas.
+A Estratégia 2 falhou ao tentar impor indentação artificial (4 espaços) em contextos aninhados. Surpreendentemente, a Estratégia 3 (Híbrida) também teve baixo desempenho. Embora protegesse os tokens, a alteração textual causada pelos marcadores de proteção (\texttt{HSS\_...}) interferiu no algoritmo de alinhamento do \textit{diff3}, gerando integrações que, embora léxicamente seguras, quebravam o layout posicional.
 
-Isso significa que, em **61 cenários**, a granularidade extra permitiu que a ferramenta resolvesse \textbf{todas} as divergências do arquivo automaticamente. Esses são casos onde o desenvolvedor não precisaria abrir o editor para realizar o \textit{merge}, representando um ganho direto de produtividade.
-
-\section{Análise de Falsos Positivos e Negativos (QP3 e QP4)}
-
-\subsection{Sucesso na Redução de Falsos Positivos (QP3)}
-Os 61 cenários classificados como "Resolvidos" representam a redução de Falsos Positivos. Nesses casos, o \textit{diff3} reportou conflito, mas o Haskell-SepMerge integrou o código automaticamente. A análise qualitativa de casos como o commit \texttt{3fa5b7d} (\textit{ShellCheck}) confirmou que essa resolução ocorre graças ao isolamento de inserções adjacentes.
-
-\subsection{Análise de Divergência Semântica (QP4)}
-A ferramenta gerou alertas de divergência em relação ao \textit{merge} manual. Uma análise qualitativa revelou que, em alguns casos, a ferramenta superou o humano.
-
-Um exemplo emblemático ocorreu no arquivo \texttt{CmdClean.hs} (commit \texttt{6f19128} do \textit{Cabal}). O ramo \textit{Left} renomeou um comando para \texttt{"v2-clean"} e atualizou sua documentação. O ramo \textit{Right} alterou apenas a indentação.
-
-\begin{figure}[H]
-    \centering
-    \caption{Comparação entre a integração automática e a manual no arquivo CmdClean.hs}
-    \label{fig:caso-cabal}
-    
-    % --- LADO ESQUERDO: Haskell-SepMerge ---
-    \begin{minipage}[t]{0.48\textwidth}
-        \centering
-        \textbf{Haskell-SepMerge (Automático)} \\
-        \vspace{0.2cm}
-        
-        \begin{lstlisting}[basicstyle=\tiny\ttfamily, frame=single, xleftmargin=0pt, numbers=none]
-{ commandName       = "v2-clean"
-, commandSynopsis   = "Clean..."
-, commandUsage      = \pname ->
-    "Usage: " ++ pname ++ " v2-clean [FLAGS]\n"
-        \end{lstlisting}
-        
-        \scriptsize{\textit{Status: Consistente}}
-    \end{minipage}
-    \hfill % Espaço entre as caixas
-    % --- LADO DIREITO: Manual ---
-    \begin{minipage}[t]{0.48\textwidth}
-        \centering
-        \textbf{Manual (Humano)} \\
-        \vspace{0.2cm}
-        
-        \begin{lstlisting}[basicstyle=\tiny\ttfamily, frame=single, xleftmargin=0pt, numbers=none]
-{ commandName       = "v2-clean"
-, commandSynopsis   = "Clean..."
-, commandUsage      = \pname ->
-    "Usage: " ++ pname ++ " new-clean [FLAGS]\n"
-        \end{lstlisting}
-        
-        \scriptsize{\textit{Status: Inconsistente (Bug)}}
-    \end{minipage}
-    
-    \vspace{0.5cm}
-    \legend{Fonte: Elaborado pelo autor com dados do repositório Cabal.}
-\end{figure}
-
-O Haskell-SepMerge realizou a integração perfeita (Figura \ref{fig:caso-cabal}). Em contrapartida, a resolução manual resultou em uma inconsistência: o nome do comando foi atualizado, mas a documentação foi revertida para a versão antiga, provavelmente um erro de atenção humana. Isso evidencia que a ferramenta pode ser mais robusta que a intervenção manual em conflitos mistos de formatação e lógica.
-
-\section{Impacto na Legibilidade e Layout}
-Observou-se que a inserção de quebras de linha para isolar separadores pode alterar o \textit{layout} do código. Em assinaturas de tipo complexas (com \texttt{=>}), a ferramenta tende a isolar o operador em uma nova linha. Embora o código gerado seja sintaticamente válido para o compilador GHC na maioria dos casos, ele viola as convenções de estilo da linguagem, sugerindo a necessidade de uso conjunto com ferramentas de formatação automática (\textit{code formatters}) no pós-processamento.
+\section{Divergências e Falsos Negativos (QP4)}
+A análise de divergência reforça a superioridade da abordagem simples:
+\begin{itemize}
+    \item \textbf{Estratégia 1:} 17 divergências em relação ao manual.
+    \item \textbf{Estratégia 3 (Híbrida):} 32 divergências.
+\end{itemize}
+A alta divergência na Estratégia Híbrida indica que a "proteção de tokens" introduz ruído excessivo, levando a ferramenta a produzir código que difere substancialmente da solução humana, aumentando o risco de falsos negativos.
 
 % CAPÍTULO 5
 \chapter{Conclusão}
 \label{chap:conclusao}
 
-Este trabalho apresentou o **Haskell-SepMerge**, uma adaptação da técnica de \textit{merge} baseada em separadores sintáticos para a linguagem Haskell. Os resultados confirmam que a segmentação baseada em separadores é capaz de resolver conflitos que ferramentas tradicionais não conseguem, especialmente em casos de inserção adjacente e conflitos mistos de formatação e lógica.
+Este trabalho avaliou o Haskell-SepMerge. Os resultados levam a conclusões importantes sobre o \textit{merge} em linguagens baseadas em indentação:
 
-Retomando as questões de pesquisa:
-\begin{itemize}
-    \item **QP1 (Total de Conflitos):** O Haskell-SepMerge aumenta a quantidade total (+295\%) devido à granularidade extrema.
-    \item **QP2 (Cenários Resolvidos):** A ferramenta reduz o número de arquivos com conflitos pendentes (-8\%).
-    \item **QP3 (Falsos Positivos):** A eficácia na redução de falsos positivos foi comprovada em 61 cenários da amostra.
-    \item **QP4 (Falsos Negativos):** A ferramenta apresentou divergências em relação ao manual, mas a análise qualitativa indicou que, em casos críticos, o Haskell-SepMerge estava correto e o humano equivocado, embora limitações semânticas (escopo de variáveis) ainda existam.
-\end{itemize}
+\begin{enumerate}
+    \item **Potencial de Resolução:** A ferramenta reduz em \textbf{10,8\%} a quantidade de arquivos conflitantes.
+    \item **Simplicidade vs. Complexidade:** A Estratégia 1 (Colagem Plana) provou-se superior à Estratégia 2 (Idiomática) e à Estratégia 3 (Híbrida). Em Haskell, preservar o espaçamento original (mesmo que "feio") é mais seguro do que tentar sintetizar indentação ou proteger tokens agressivamente. A proteção excessiva de tokens (Estratégia 3) provou-se contraproducente, gerando mais divergências do que benefícios.
+\end{enumerate}
 
-Conclui-se que a ferramenta é viável e segura, recomendando-se seu uso com uma configuração flexível de separadores. Como trabalhos futuros, sugere-se a integração da ferramenta como um \textit{driver} nativo do Git e a incorporação de um formatador automático na etapa de pós-processamento.
+\section{Trabalhos Futuros}
+Recomenda-se o uso de uma arquitetura de pipeline: utilizar a Estratégia 1 para resolver a lógica do conflito e, imediatamente após, invocar um formatador externo robusto (como \textit{ormolu}) para corrigir a estética, garantindo integridade semântica e visual.
 
 % ----------------------------------------------------------
 % ELEMENTOS PÓS-TEXTUAIS

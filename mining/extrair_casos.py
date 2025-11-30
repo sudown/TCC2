@@ -4,13 +4,16 @@ import subprocess
 from git import Repo
 
 # CONFIGURAÇÕES
-CSDIFF_SCRIPT = "../haskell/csdiff-hs-merge.sh"  # Seu script final
+CSDIFF_SCRIPT = "../haskell/haskell-sep-mergeV12.sh"  # Seu script final
 REPOS_DIR = "./repos_haskell"
 OUTPUT_DIR = "./casos_estudo"
 
 # Seus casos encontrados
 CASOS_INTERESSANTES = [
-    ("stack", "fa878f9", "src/Stack/Package.hs",)
+    (
+      "stack", "802afc1", "src/Stack/Build/ConstructPlan.hs",
+
+    )
 ]
 
 # URLs dos repositórios para clone automático

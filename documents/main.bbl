@@ -1,0 +1,30 @@
+\providecommand{\abntreprintinfo}[1]{%
+ \citeonline{#1}}
+\setlength{\labelsep}{0pt}\begin{thebibliography}{}
+\providecommand{\abntrefinfo}[3]{}
+\providecommand{\abntbstabout}[1]{}
+\abntbstabout{v<VERSION> }
+
+\bibitem[Apel et al. 2011]{apel2011semistructured}
+\abntrefinfo{Apel et al.}{APEL et al.}{2011}
+{APEL, S. et al. Semistructured merge: rethinking merge in revision control systems. In:  \emph{Proceedings of the 19th ACM SIGSOFT symposium and the 13th European conference on Foundations of software engineering}. [S.l.: s.n.], 2011. p. 190--200.}
+
+\bibitem[Clementino, Borba e Cavalcanti 2021]{clementino2021textual}
+\abntrefinfo{Clementino, Borba e Cavalcanti}{CLEMENTINO; BORBA; CAVALCANTI}{2021}
+{CLEMENTINO, J.; BORBA, P.; CAVALCANTI, G. Textual merge based on language-specific syntactic separators. In:  \emph{Brazilian Symposium on Software Engineering (SBES '21)}. Joinville, Brazil: ACM, 2021. p. 1--10.}
+
+\bibitem[Khanna, Kunal e Pierce 2007]{khanna2007formal}
+\abntrefinfo{Khanna, Kunal e Pierce}{KHANNA; KUNAL; PIERCE}{2007}
+{KHANNA, S.; KUNAL, K.; PIERCE, B.~C. A formal investigation of diff3. In:  SPRINGER. \emph{IARCS Annual Conference on Foundations of Software Technology and Theoretical Computer Science}. [S.l.], 2007. p. 485--496.}
+
+\bibitem[Marlow et al. 2010]{marlow2010haskell}
+\abntrefinfo{Marlow et al.}{MARLOW et al.}{2010}
+{MARLOW, S. et al. \emph{Haskell 2010 language report}.
+[S.l.], 2010. Dispon{\'\i}vel em: \url{https://www.haskell.org/onlinereport/haskell2010/}.}
+
+\bibitem[Mens 2002]{mens2002survey}
+\abntrefinfo{Mens}{MENS}{2002}
+{MENS, T. A state-of-the-art survey on software merging.
+\emph{IEEE Transactions on Software Engineering}, IEEE, v.~28, n.~5, p. 449--462, 2002.}
+
+\end{thebibliography}

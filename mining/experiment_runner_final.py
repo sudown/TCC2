@@ -6,13 +6,16 @@ from git import Repo
 
 # --- CONFIGURAÇÕES ---
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-# Certifique-se de que o nome do script aqui é o da versão v10 (ou a que você estiver usando)
-CSDIFF_SCRIPT = os.path.join(SCRIPT_DIR, "../haskell/haskell-sep-merge.sh") 
+# Certifique-se de usar o script v10 (o mais robusto)
+CSDIFF_SCRIPT = os.path.join(SCRIPT_DIR, "../haskell/haskell-sep-mergeV10.sh") 
 
 REPOS_DIR = os.path.join(SCRIPT_DIR, "repos_haskell")
-RESULTS_FILE = "debug_resultados_corrigido.csv"
+RESULTS_FILE = "resultados_com_validacao_total.csv"
 
 REPOS_TO_MINE = [
+    "https://github.com/koalaman/shellcheck.git",
+    "https://github.com/jgm/pandoc.git",
+    "https://github.com/haskell/cabal.git",
     "https://github.com/commercialhaskell/stack.git"
 ]
 
@@ -24,19 +27,22 @@ def check_dependencies():
     if shutil.which("diff3") is None:
         print("[ERRO CRÍTICO] 'diff3' não instalado.")
         return False
+    if shutil.which("ghc") is None:
+        print("[AVISO] 'ghc' não encontrado. Validação de sintaxe será ignorada.")
     return True
 
 def setup():
     if not os.path.exists(REPOS_DIR):
         os.makedirs(REPOS_DIR)
     
-    # Modo 'append' (a) se quiser continuar, ou 'w' para zerar. Usando 'w' para teste limpo.
+    # Adicionada coluna Manual_ParseOK
     with open(RESULTS_FILE, 'w', newline='') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow([
             "Repo", "MergeCommit", "File", 
             "Diff3_Conflict", "CSDiff_Conflict", 
-            "CSDiff_Equals_Manual", "Diff3_ParseOK", "CSDiff_ParseOK"
+            "CSDiff_Equals_Manual", 
+            "Diff3_ParseOK", "CSDiff_ParseOK", "Manual_ParseOK"
         ])
 
 def count_conflicts(filepath):
@@ -59,21 +65,14 @@ def check_syntax(filepath):
                              stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
         if res.returncode == 0: return True
         err = res.stderr.lower()
-        # Filtra apenas erros de sintaxe reais
-        if any(e in err for e in ["parse error", "lexical error", "incorrect indentation"]):
+        if any(e in err for e in ["parse error", "lexical error", "incorrect indentation", "unexpected"]):
             return False
         return True
     except: return True
 
-# --- NOVA FUNÇÃO SEGURA ---
 def get_content_safe(tree, filepath):
-    """Tenta pegar o conteúdo do arquivo. Retorna None se não existir (Add/Delete)."""
-    try:
-        return tree[filepath].data_stream.read()
-    except KeyError:
-        return None
-    except Exception:
-        return None
+    try: return tree[filepath].data_stream.read()
+    except: return None
 
 def process_repo(repo_url):
     repo_name = repo_url.split("/")[-1].replace(".git", "")
@@ -85,19 +84,19 @@ def process_repo(repo_url):
         Repo.clone_from(repo_url, repo_path)
     
     repo = Repo(repo_path)
-    # Filtra merges
     merges = [c for c in repo.iter_commits() if len(c.parents) == 2]
     print(f" > Total de merges: {len(merges)}")
 
-    # Vamos analisar mais commits dessa vez (ex: 200)
-    for i, commit in enumerate(merges[:3000]):
-        parent1 = commit.parents[0] # Left
-        parent2 = commit.parents[1] # Right
+    # Sem limite de break para rodar tudo (ou descomente para testar)
+    for i, commit in enumerate(merges):
+        # if i >= 200: break 
+        
+        parent1 = commit.parents[0]
+        parent2 = commit.parents[1]
         
         try:
             base = repo.merge_base(parent1, parent2)[0]
-        except:
-            continue
+        except: continue
         
         diffs = parent1.diff(parent2)
         hs_files = [d for d in diffs if d.a_path.endswith(".hs")]
@@ -105,63 +104,60 @@ def process_repo(repo_url):
         for diff in hs_files:
             filename = diff.a_path
             
-            # --- PROTEÇÃO CONTRA ARQUIVOS DELETADOS/ADICIONADOS ---
-            # Tenta pegar o conteúdo das 3 versões
             base_blob = get_content_safe(base.tree, filename)
             left_blob = get_content_safe(parent1.tree, filename)
             right_blob = get_content_safe(parent2.tree, filename)
             
-            # Se algum for None, não é um merge de 3 vias válido -> Pula
-            if base_blob is None or left_blob is None or right_blob is None:
-                # print(f"   [SKIP] Arquivo incompleto (Add/Del): {filename}")
-                continue
+            if base_blob is None or left_blob is None or right_blob is None: continue
 
-            # --- FILTRO NON-TRIVIAL (Hash Check) ---
-            # Como já lemos o conteúdo, podemos comparar os bytes direto
             if (base_blob == left_blob or base_blob == right_blob or left_blob == right_blob):
                 continue
 
-            # Se chegou aqui, é um CENÁRIO VÁLIDO!
             try:
                 manual_blob = get_content_safe(commit.tree, filename)
-                if manual_blob is None: continue # Arquivo foi deletado no merge final?
+                if manual_blob is None: continue
 
-                # Salva temps
                 with open("temp_base.hs", "wb") as f: f.write(base_blob)
                 with open("temp_left.hs", "wb") as f: f.write(left_blob)
                 with open("temp_right.hs", "wb") as f: f.write(right_blob)
                 with open("temp_manual.hs", "wb") as f: f.write(manual_blob)
                 
-                # Executa
+                # Executa ferramentas
                 subprocess.run(["diff3", "-m", "temp_left.hs", "temp_base.hs", "temp_right.hs"], 
                                stdout=open("out_diff3.hs", "w"), stderr=subprocess.DEVNULL)
                 
-                subprocess.run([CSDIFF_SCRIPT, "temp_base.hs", "temp_left.hs", "temp_right.hs"], 
+                subprocess.run([CSDIFF_SCRIPT, "temp_base.hs", "temp_left.hs", "temp_right.hs"],
                                stdout=open("out_csdiff.hs", "w"), stderr=subprocess.DEVNULL)
 
                 # Métricas
                 c_diff3 = count_conflicts("out_diff3.hs")
                 c_csdiff = count_conflicts("out_csdiff.hs")
                 
-                # Só nos interessa se Diff3 achou problema OU CSDiff inventou problema
+                # Só analisamos se houve conflito em alguma ferramenta
                 if c_diff3 > 0 or c_csdiff > 0:
                     eq_manual = files_are_equal("out_csdiff.hs", "temp_manual.hs")
                     
                     parse_diff3 = check_syntax("out_diff3.hs") if c_diff3 == 0 else False
                     parse_csdiff = check_syntax("out_csdiff.hs") if c_csdiff == 0 else False
-
-                    print(f"   > {filename}: D3={c_diff3} | HS={c_csdiff} | EqMan={eq_manual} | Parse={parse_csdiff}")
+                    
+                    # --- NOVA VALIDAÇÃO: MANUAL ---
+                    # Verificamos se o humano comitou código válido
+                    parse_manual = check_syntax("temp_manual.hs")
 
                     with open(RESULTS_FILE, 'a', newline='') as csvfile:
                         writer = csv.writer(csvfile)
                         writer.writerow([
                             repo_name, commit.hexsha[:7], filename, 
                             c_diff3, c_csdiff, 
-                            eq_manual, parse_diff3, parse_csdiff
+                            eq_manual, 
+                            parse_diff3, parse_csdiff, parse_manual
                         ])
+                    
+                    # Log de alerta se o humano errou (código quebrado no repo)
+                    if not parse_manual:
+                        print(f"   [ALERTA] Código Manual Inválido em {filename} ({commit.hexsha[:7]})")
 
-            except Exception as e:
-                print(f"     [ERRO INESPERADO] {e}")
+            except Exception:
                 continue
 
 if __name__ == "__main__":
@@ -169,4 +165,4 @@ if __name__ == "__main__":
         setup()
         for url in REPOS_TO_MINE:
             process_repo(url)
-        print("\nProcessamento finalizado.")
+        print(f"\nFim! Verifique '{RESULTS_FILE}'")
