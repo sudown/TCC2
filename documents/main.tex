@@ -101,12 +101,11 @@ Modern software development relies on version control systems to integrate paral
 \chapter{Introdução}
 \label{chap:introducao}
 
-A colaboração em projetos de software exige que múltiplos desenvolvedores alterem a mesma base de código simultaneamente. Para gerenciar essas alterações, Sistemas de Controle de Versão (VCS) utilizam algoritmos de \textit{merge} (integração) para combinar as modificações \cite{mens2002survey}.
+A colaboração em projetos de software exige que múltiplos desenvolvedores alterem a mesma base de código simultaneamente. Para gerenciar essas alterações e os desafios inerentes ao trabalho colaborativo, Sistemas de Controle de Versão (VCS) utilizam algoritmos de \textit{merge} (integração) para combinar as modificações \cite{edwards1997flexible, mens2002survey}.
 
-A técnica predominante na indústria é o \textit{merge} textual não estruturado, exemplificado pelo algoritmo \textit{diff3} \cite{khanna2007formal}. Esta abordagem trata o código-fonte como uma sequência simples de linhas de texto. Embora eficiente, o \textit{diff3} possui limitações significativas: frequentemente reporta conflitos falsos (falsos positivos) quando as modificações ocorrem na mesma linha ou em linhas consecutivas.
+A técnica predominante na indústria é o \textit{merge} textual não estruturado, exemplificado pelo algoritmo \textit{diff3} \cite{khanna2007formal}. Esta abordagem trata o código-fonte como uma sequência simples de linhas de texto. Embora eficiente, o \textit{diff3} possui limitações significativas: frequentemente reporta conflitos falsos (falsos positivos) quando as modificações ocorrem na mesma linha ou em linhas consecutivas. Além do impacto na produtividade, conflitos mal resolvidos ou não detectados podem introduzir defeitos na qualidade do software final \cite{brindescu2020empirical}.
 
 Para mitigar esses problemas, \citeonline{clementino2021textual} propuseram o \textit{Custom Separators Diff} (CSDiff). Esta técnica propõe um pré-processamento do texto baseado em separadores sintáticos da linguagem, aumentando a granularidade da comparação.
-
 \section{Problema de Pesquisa}
 Enquanto o CSDiff foi validado para Java, sua eficácia em linguagens funcionais como **Haskell** permanece inexplorada. Haskell apresenta desafios únicos, sendo o principal a **Regra de Layout** (\textit{layout rule}). Em Haskell, o escopo de blocos é definido pela indentação. Ferramentas de \textit{merge} textual que alteram espaços em branco podem, inadvertidamente, alterar a semântica do programa ou impedir sua compilação.
 
@@ -136,7 +135,9 @@ O objetivo geral deste trabalho é desenvolver e avaliar a ferramenta **Haskell-
 \section{Integração de Software e suas Abordagens}
 O processo de integração visa reconciliar mudanças paralelas. As abordagens podem ser classificadas em textuais e estruturadas.
 
-A abordagem textual (\textit{diff3}) é agnóstica à linguagem, rápida e robusta, mas sofre com a falta de contexto semântico. Já o \textit{Merge Estruturado} \cite{apel2011semistructured} opera sobre a Árvore Sintática Abstrata (AST). Embora elimine conflitos de formatação, o merge estruturado enfrenta barreiras de adoção: alto custo de desenvolvimento de \textit{parsers} e incapacidade de processar arquivos com erros de sintaxe momentâneos.
+A abordagem textual (\textit{diff3}) é agnóstica à linguagem, rápida e robusta, mas sofre com a falta de contexto semântico. Em contrapartida, pioneiros como \citeonline{westfechtel1991structure} e \citeonline{buffenbarger1993syntactic} propuseram o \textit{Merge Estruturado}, que opera sobre a estrutura sintática do programa. Trabalhos subsequentes, como o de \citeonline{apel2011semistructured}, evoluíram essa técnica utilizando Árvores Sintáticas Abstratas (AST).
+
+Embora elimine conflitos de formatação, o merge estruturado enfrenta barreiras de adoção. Estudos comparativos indicam que essas ferramentas possuem alto custo de desenvolvimento de \textit{parsers} e complexidade computacional elevada, além da incapacidade de processar arquivos com erros de sintaxe momentâneos \cite{cavalcanti2019impact}.
 
 A técnica CSDiff surge como um meio-termo: utiliza conhecimento sintático leve (apenas separadores) para segmentar o texto, mantendo o motor de comparação textual.
 
@@ -164,6 +165,61 @@ Para enfrentar o problema da *Layout Rule*, foram comparadas três versões do a
     \item \textbf{Estratégia 2 (Colagem Idiomática):} Tenta embelezar o código. Ao encontrar separadores verticais (como \texttt{=>}), insere uma quebra de linha e aplica uma indentação fixa de 4 espaços.
     \item \textbf{Estratégia 3 (Híbrida/Protegida):} Combina a lógica da Estratégia 1 com uma camada extra de proteção léxica. Tokens compostos (como \texttt{||} ou \texttt{==}) são substituídos por marcadores únicos (\texttt{HSS\_...}) antes do merge para evitar corrupção, sendo restaurados ao final.
 \end{enumerate}
+
+\begin{figure}[H]
+  \centering
+  \caption{Comparativo visual das Estratégias de Reconstrução propostas}
+  \label{fig:estrategias-comparacao}
+  
+  % --- Linha Superior: O Input (Exemplo) ---
+  \textbf{Cenário:} Reconstrução de uma assinatura de função complexa.\\
+  \vspace{0.2cm}
+
+  % --- Estratégia 1 ---
+  \begin{minipage}[t]{0.48\textwidth}
+      \textbf{Estratégia 1 (Colagem Plana)}
+      \vspace{0.1cm}
+      \begin{lstlisting}[basicstyle=\tiny\ttfamily, numbers=none, frame=single]
+foo :: (Monad m) => a -> m b
+foo = ...
+      \end{lstlisting}
+      \small{\textit{Resultado:} Mantém a linha única. Preserva a estrutura original dos ramos, mas pode ficar longo visualmente.}
+  \end{minipage}
+  \hfill
+  % --- Estratégia 2 ---
+  \begin{minipage}[t]{0.48\textwidth}
+      \textbf{Estratégia 2 (Idiomática)}
+      \vspace{0.1cm}
+      \begin{lstlisting}[basicstyle=\tiny\ttfamily, numbers=none, frame=single]
+foo :: (Monad m)
+  => a
+  -> m b
+foo = ...
+      \end{lstlisting}
+      \small{\textit{Resultado:} Insere quebras em `=>` e `->` com 4 espaços. Visualmente agradável, mas arriscado para o compilador.}
+  \end{minipage}
+
+  \vspace{0.4cm}
+
+  % --- Estratégia 3 (Mecanismo) ---
+  \begin{minipage}[t]{0.98\textwidth}
+      \textbf{Estratégia 3 (Mecanismo de Proteção Híbrida)}
+      \vspace{0.1cm}
+      \begin{lstlisting}[basicstyle=\tiny\ttfamily, numbers=none, frame=single]
+-- Passo 1: Substituição (Pré-Merge)
+foo HSS_DOUBLE_COLON (Monad m) HSS_FAT_ARROW a HSS_ARROW m b
+
+-- Passo 2: Merge Textual (Diff3)
+...
+
+-- Passo 3: Restauração (Pós-Merge)
+foo :: (Monad m) => a -> m b
+      \end{lstlisting}
+      \small{\textit{Mecanismo:} Os tokens são "blindados" para evitar que o algoritmo de merge os fragmente (ex: transformar `=>` em `= >`), garantindo integridade léxica antes da reconstrução plana.}
+  \end{minipage}
+
+  \legend{Fonte: Elaborado pelo autor.}
+\end{figure}
 
 \section{Infraestrutura e Processo de Análise}
 Para validar os resultados, desenvolveu-se um script de automação em Python que opera da seguinte forma para cada cenário minerado:

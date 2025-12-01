@@ -9,9 +9,27 @@
 \abntrefinfo{Apel et al.}{APEL et al.}{2011}
 {APEL, S. et al. Semistructured merge: rethinking merge in revision control systems. In:  \emph{Proceedings of the 19th ACM SIGSOFT symposium and the 13th European conference on Foundations of software engineering}. [S.l.: s.n.], 2011. p. 190--200.}
 
+\bibitem[Brindescu et al. 2020]{brindescu2020empirical}
+\abntrefinfo{Brindescu et al.}{BRINDESCU et al.}{2020}
+{BRINDESCU, C. et al. An empirical investigation into merge conflicts and their effect on software quality.
+\emph{Empirical Software Engineering}, Springer, v.~25, n.~1, p. 562--590, 2020.}
+
+\bibitem[Buffenbarger 1993]{buffenbarger1993syntactic}
+\abntrefinfo{Buffenbarger}{BUFFENBARGER}{1993}
+{BUFFENBARGER, J. Syntactic software merging. In:  \emph{Software Configuration Management}. [S.l.]: Springer, 1993. p. 153--172.}
+
+\bibitem[Cavalcanti et al. 2019]{cavalcanti2019impact}
+\abntrefinfo{Cavalcanti et al.}{CAVALCANTI et al.}{2019}
+{CAVALCANTI, G. et al. The impact of structure on software merging: Semistructured versus structured merge.
+\emph{IEEE Transactions on Software Engineering}, IEEE, v.~47, n.~10, p. 2221--2244, 2019.}
+
 \bibitem[Clementino, Borba e Cavalcanti 2021]{clementino2021textual}
 \abntrefinfo{Clementino, Borba e Cavalcanti}{CLEMENTINO; BORBA; CAVALCANTI}{2021}
 {CLEMENTINO, J.; BORBA, P.; CAVALCANTI, G. Textual merge based on language-specific syntactic separators. In:  \emph{Brazilian Symposium on Software Engineering (SBES '21)}. Joinville, Brazil: ACM, 2021. p. 1--10.}
+
+\bibitem[Edwards 1997]{edwards1997flexible}
+\abntrefinfo{Edwards}{EDWARDS}{1997}
+{EDWARDS, W.~K. Flexible conflict detection and management in collaborative applications. In:  \emph{Proceedings of the 10th annual ACM symposium on User interface software and technology}. [S.l.: s.n.], 1997. p. 139--148.}
 
 \bibitem[Khanna, Kunal e Pierce 2007]{khanna2007formal}
 \abntrefinfo{Khanna, Kunal e Pierce}{KHANNA; KUNAL; PIERCE}{2007}
@@ -26,5 +44,9 @@
 \abntrefinfo{Mens}{MENS}{2002}
 {MENS, T. A state-of-the-art survey on software merging.
 \emph{IEEE Transactions on Software Engineering}, IEEE, v.~28, n.~5, p. 449--462, 2002.}
+
+\bibitem[Westfechtel 1991]{westfechtel1991structure}
+\abntrefinfo{Westfechtel}{WESTFECHTEL}{1991}
+{WESTFECHTEL, B. Structure-oriented merging of revisions of software documents. In:  ACM. \emph{Proceedings of the 3rd international workshop on Software configuration management}. [S.l.], 1991. p. 68--79.}
 
 \end{thebibliography}
