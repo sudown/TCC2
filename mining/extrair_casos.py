@@ -4,23 +4,25 @@ import subprocess
 from git import Repo
 
 # CONFIGURAÇÕES
-CSDIFF_SCRIPT = "../haskell/haskell-sep-mergeV12.sh"  # Seu script final
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+HASKELL_SEPMERGE_JAR = os.path.abspath(os.path.join(SCRIPT_DIR, "../haskell/haskell-sepmerge.jar"))
+print(f"Usando JAR em: {HASKELL_SEPMERGE_JAR}")
 REPOS_DIR = "./repos_haskell"
 OUTPUT_DIR = "./casos_estudo"
 
 # Seus casos encontrados
 CASOS_INTERESSANTES = [
     (
-      "stack", "802afc1", "src/Stack/Build/ConstructPlan.hs",
-
-    )
+      "shellcheck", "3fa5b7d", "src/ShellCheck/AnalyzerLib.hs",
+    ),
 ]
 
 # URLs dos repositórios para clone automático
 REPO_URLS = {
     "cabal": "https://github.com/haskell/cabal",
     "shellcheck": "https://github.com/koalaman/shellcheck",
-    "stack": "https://github.com/commercialhaskell/stack"
+    "stack": "https://github.com/commercialhaskell/stack",
+    "pandoc": "https://github.com/jgm/pandoc"
 }
 
 def ensure_repo_cloned(repo_name):
@@ -115,7 +117,15 @@ def extract_cases():
 
             # csdiff
             with open(f_merge_csdiff, "w") as out:
-                subprocess.run([CSDIFF_SCRIPT, f_base, f_left, f_right], stdout=out)
+                resultado = subprocess.run(
+                    ["java", "-jar", HASKELL_SEPMERGE_JAR, f_base, f_left, f_right], 
+                    stdout=out, 
+                    stderr=subprocess.PIPE, # Captura o erro
+                    text=True
+                )
+                # Se o Java jogar algum erro, nós imprimimos no console na hora!
+                if resultado.stderr:
+                    print(f"   [ERRO JAVA] {resultado.stderr.strip()}")
 
             # info.txt
             if repo_name in REPO_URLS:

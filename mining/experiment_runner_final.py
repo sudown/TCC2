@@ -7,7 +7,9 @@ from git import Repo
 # --- CONFIGURAÇÕES ---
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 # Certifique-se de usar o script v10 (o mais robusto)
-CSDIFF_SCRIPT = os.path.join(SCRIPT_DIR, "../haskell/haskell-sep-mergeV10.sh") 
+#CSDIFF_SCRIPT = os.path.join(SCRIPT_DIR, "../haskell/haskell-sep-mergeV10.sh") 
+
+HASKELL_SEPMERGE_JAR = os.path.join(SCRIPT_DIR, "../haskell/haskell-sepmerge.jar")
 
 REPOS_DIR = os.path.join(SCRIPT_DIR, "repos_haskell")
 RESULTS_FILE = "resultados_com_validacao_total.csv"
@@ -21,11 +23,15 @@ REPOS_TO_MINE = [
 
 def check_dependencies():
     print("--- Verificando Dependências ---")
-    if not os.path.exists(CSDIFF_SCRIPT):
-        print(f"[ERRO CRÍTICO] Script CSDiff não encontrado em: {CSDIFF_SCRIPT}")
+    if not os.path.exists(HASKELL_SEPMERGE_JAR):
+        print(f"[ERRO CRÍTICO] JAR não encontrado em: {HASKELL_SEPMERGE_JAR}")
+        print("Certifique-se de compilar o projeto com 'mvn clean package'")
         return False
     if shutil.which("diff3") is None:
         print("[ERRO CRÍTICO] 'diff3' não instalado.")
+        return False
+    if shutil.which("java") is None:
+        print("[ERRO CRÍTICO] 'java' não instalado. O Haskell-SepMerge requer a JRE.")
         return False
     if shutil.which("ghc") is None:
         print("[AVISO] 'ghc' não encontrado. Validação de sintaxe será ignorada.")
@@ -123,11 +129,15 @@ def process_repo(repo_url):
                 with open("temp_manual.hs", "wb") as f: f.write(manual_blob)
                 
                 # Executa ferramentas
+                # Executa o diff3 padrão (já estava no seu script)
                 subprocess.run(["diff3", "-m", "temp_left.hs", "temp_base.hs", "temp_right.hs"], 
                                stdout=open("out_diff3.hs", "w"), stderr=subprocess.DEVNULL)
                 
-                subprocess.run([CSDIFF_SCRIPT, "temp_base.hs", "temp_left.hs", "temp_right.hs"],
-                               stdout=open("out_csdiff.hs", "w"), stderr=subprocess.DEVNULL)
+                # Executa a nova ferramenta Java
+                # Note que o redirect ">" salva a saída System.out.println(line) do Java no arquivo "out_csdiff.hs"
+                with open("out_csdiff.hs", "w") as out_file:
+                    subprocess.run(["java", "-jar", HASKELL_SEPMERGE_JAR, "temp_base.hs", "temp_left.hs", "temp_right.hs"],
+                                   stdout=out_file, stderr=subprocess.DEVNULL)
 
                 # Métricas
                 c_diff3 = count_conflicts("out_diff3.hs")

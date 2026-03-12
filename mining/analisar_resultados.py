@@ -1,105 +1,60 @@
 import csv
+import pandas as pd
 
 # --- CONFIGURAÇÃO ---
-INPUT_FILE = "resultados_com_validacao_total-frank.csv"
+CSV_FILE = "resultados_com_validacao_total.csv"
 
 def analyze():
-    # Métricas Gerais
-    total_conflicts_diff3 = 0
-    total_conflicts_csdiff = 0
-    files_diff3 = 0
-    files_csdiff = 0
-    
-    # Análise de Sucesso (Casos Resolvidos)
-    total_resolved = 0          # CSDiff zerou os conflitos
-    resolved_syntax_ok = 0      # Zerou E compila (Sucesso Real)
-    resolved_syntax_fail = 0    # Zerou MAS não compila (Erro de Layout)
-    
-    # Análise de Falsos Negativos (Divergência do Manual)
-    divergences = 0             # Diferente do Manual
-    divergences_syntax_ok = 0   # Diferente, mas compila (Provável mudança estética/semântica)
-    
-    # Validação do Manual (Controle de Qualidade)
-    manual_broken = 0           # Quantos arquivos o próprio dev comitou quebrado
-
     try:
-        with open(INPUT_FILE, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            row_count = 0
-            
-            for row in reader:
-                row_count += 1
-                try:
-                    d3 = int(row['Diff3_Conflict'])
-                    cs = int(row['CSDiff_Conflict'])
-                except ValueError: continue
-
-                # 1. Totais
-                total_conflicts_diff3 += d3
-                total_conflicts_csdiff += cs
-                if d3 > 0: files_diff3 += 1
-                if cs > 0: files_csdiff += 1
-                
-                # Leitura de Booleanos
-                eq_manual = row['CSDiff_Equals_Manual'] == 'True'
-                cs_parse = row['CSDiff_ParseOK'] == 'True'
-                manual_parse = row.get('Manual_ParseOK', 'True') == 'True'
-
-                if not manual_parse:
-                    manual_broken += 1
-
-                # 2. Análise de Sucessos (Diff3 falhou, CSDiff resolveu)
-                if d3 > 0 and cs == 0:
-                    total_resolved += 1
-                    if cs_parse:
-                        resolved_syntax_ok += 1
-                    else:
-                        resolved_syntax_fail += 1
-                
-                # 3. Análise de Falsos Negativos (Resolveu, mas diferente do manual)
-                if d3 > 0 and cs == 0 and not eq_manual:
-                    divergences += 1
-                    if cs_parse:
-                        divergences_syntax_ok += 1
-
-        # Cálculos de Porcentagem
-        var_conflicts = ((total_conflicts_csdiff - total_conflicts_diff3) / total_conflicts_diff3) * 100 if total_conflicts_diff3 else 0
-        var_files = ((files_csdiff - files_diff3) / files_diff3) * 100 if files_diff3 else 0
-        syntax_success_rate = (resolved_syntax_ok / total_resolved * 100) if total_resolved else 0
-
-        print("=" * 60)
-        print(f"RELATÓRIO FINAL (Versão hibrida --full) - {row_count} cenários")
-        print("=" * 60)
+        # Carrega os dados
+        df = pd.read_csv(CSV_FILE)
         
-        print(f"QP1 - GRANULARIDADE:")
-        print(f"  Conflitos Diff3:       {total_conflicts_diff3}")
-        print(f"  Conflitos HsSepMerge:  {total_conflicts_csdiff}")
-        print(f"  Variação:              {var_conflicts:+.2f}%")
-        print("-" * 60)
+        # Total de arquivos analisados (onde houve algum conflito em alguma ferramenta)
+        total_arquivos = len(df)
         
-        print(f"QP2 - EFICÁCIA (Arquivos Pendentes):")
-        print(f"  Arquivos Diff3:        {files_diff3}")
-        print(f"  Arquivos HsSepMerge:   {files_csdiff}")
-        print(f"  Variação:              {var_files:+.2f}%")
-        print("-" * 60)
+        # 1. Contagem de Conflitos (Falsos Positivos)
+        arquivos_com_conflito_diff3 = len(df[df['Diff3_Conflict'] > 0])
+        arquivos_com_conflito_csdiff = len(df[df['CSDiff_Conflict'] > 0])
         
-        print(f"QP3 - SUCESSO DE RESOLUÇÃO (0 Conflitos):")
-        print(f"  Total Resolvido:       {total_resolved}")
-        print(f"  ✅ Sintaxe Válida:      {resolved_syntax_ok} ({syntax_success_rate:.1f}%)")
-        print(f"  ❌ Erro de Sintaxe:     {resolved_syntax_fail}")
-        print("-" * 60)
+        # Casos onde o diff3 falhou, mas a nossa ferramenta resolveu 100% (Falsos Positivos Eliminados)
+        resolvidos_pelo_csdiff = df[(df['Diff3_Conflict'] > 0) & (df['CSDiff_Conflict'] == 0)]
+        total_resolvidos = len(resolvidos_pelo_csdiff)
         
-        print(f"QP4 - ALERTAS DE FALSO NEGATIVO (Divergência):")
-        print(f"  Total Divergente:      {divergences}")
-        print(f"  ↳ Desses, compilam:    {divergences_syntax_ok}")
-        print("-" * 60)
+        # 2. Análise de Sintaxe (A grande vitória da "Reversão Matemática")
+        # Dentre os que a ferramenta resolveu sozinha, quantos compilaram perfeitamente?
+        sucesso_sintatico = len(resolvidos_pelo_csdiff[resolvidos_pelo_csdiff['CSDiff_ParseOK'] == True])
         
-        print(f"CONTROLE:")
-        print(f"  Manuais Quebrados:     {manual_broken}")
-        print("=" * 60)
+        taxa_sucesso = (sucesso_sintatico / total_resolvidos * 100) if total_resolvidos > 0 else 0
+        
+        # 3. Comparação com o Desenvolvedor Humano
+        iguais_ao_manual = len(resolvidos_pelo_csdiff[resolvidos_pelo_csdiff['CSDiff_Equals_Manual'] == True])
+
+        # --- EXIBIÇÃO DOS RESULTADOS ---
+        print("="*50)
+        print(" 📊 RESULTADOS DA ANÁLISE: HASKELL-SEPMERGE")
+        print("="*50)
+        print(f"Total de arquivos analisados: {total_arquivos}")
+        print("-" * 50)
+        print("📌 RESOLUÇÃO DE CONFLITOS (Redução de Falsos Positivos):")
+        print(f"  -> Arquivos com conflito no Diff3 nativo:  {arquivos_com_conflito_diff3}")
+        print(f"  -> Arquivos com conflito no Haskell-Sep:   {arquivos_com_conflito_csdiff}")
+        print(f"  ✅ Conflitos totalmente resolvidos:        {total_resolvidos} arquivos")
+        print("-" * 50)
+        print("🛠️  VALIDAÇÃO SINTÁTICA (Regra de Layout):")
+        print(f"  -> Dos {total_resolvidos} arquivos resolvidos automaticamente:")
+        print(f"  ✅ Compilaram com sucesso no GHC (ParseOK): {sucesso_sintatico} ({taxa_sucesso:.1f}%)")
+        print(f"  🤝 Ficaram idênticos ao merge manual:       {iguais_ao_manual}")
+        print("="*50)
+
+        # 4. (Opcional) Exportar os casos de sucesso para inspecionar no VS Code
+        if total_resolvidos > 0:
+            resolvidos_pelo_csdiff.to_csv("casos_sucesso_absoluto.csv", index=False)
+            print("\n💡 Dica: Os arquivos que a ferramenta resolveu com sucesso foram salvos em 'casos_sucesso_absoluto.csv'")
 
     except FileNotFoundError:
-        print(f"Erro: Arquivo '{INPUT_FILE}' não encontrado.")
+        print(f"[ERRO] Arquivo '{CSV_FILE}' não encontrado. Execute o orquestrador primeiro.")
+    except Exception as e:
+        print(f"[ERRO] Ocorreu um problema ao analisar os dados: {e}")
 
 if __name__ == "__main__":
     analyze()
